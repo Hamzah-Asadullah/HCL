@@ -18,7 +18,7 @@ using namespace std::chrono;
 
 int main()
 {
-    std::size_t elems = 1024 * 1024 * 1024;
+    std::size_t elems = 1024 * 1024 * 768;
     HCL::vector_f32 a(elems); a.setX(17);
     HCL::vector_f32 b(elems); b.setX(16);
     HCL::vector_f32 c(elems), d(elems);
@@ -48,7 +48,7 @@ int main()
 
     std::cout
         << duration_cast<seconds>(end- start).count()
-        << "s.: Finished final on two vectors, each "
+        << "s.: Finished final on four vectors, each "
         << ((elems * 4) / 1024.f) / 1024.f
         << "MB of 32-bit floats." << std::endl;
 
