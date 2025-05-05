@@ -1,5 +1,6 @@
 #include <iostream>
 #include <chrono>
+#include <string>
 
 #include "./HCL/vector.cpp"
 
@@ -7,18 +8,40 @@
 #undef DEBUG
 #endif
 
-using namespace std::chrono;
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
-/*
-  !!! NOTE !!!
-  This program will use ~12GB of memory to benchmark.
-  Please ensure your machine has enough memory to run this.
-  If you have less memory, consider lowering std::size_t elems.
-*/
+using namespace std::chrono;
 
 int main()
 {
-    std::size_t elems = 1024 * 1024 * 768;
+    #ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    #endif
+
+    std::size_t elems = 0;
+    std::cout << ">_ Enter MB of mem to use: ";
+    {
+        std::string tmp("");
+        std::getline(std::cin, tmp);
+        
+        try
+        {
+            elems = std::max
+            (
+                std::size_t(1),
+                std::size_t(((std::stoull(tmp) * 1024 * 1024) / sizeof(float)) / 4)
+            );
+            std::cout << ">> Set to " << elems << " numbers per vector.\n>> 0%";
+        }
+        catch (...)
+        {
+            std::cout << ">> Didn't enter a valid number \U0001F937";
+            return -1;
+        }
+    }
+
     HCL::vector_f32 a(elems); a.setX(17);
     HCL::vector_f32 b(elems); b.setX(16);
     HCL::vector_f32 c(elems), d(elems);
@@ -28,29 +51,24 @@ int main()
     // operation, one-lined but ~50% slower (due temp. copies): d = a * b + a / b;
     d  = a;
     d *= b;
-
-    end = high_resolution_clock::now();
-    std::cout
-        << duration_cast<milliseconds>(end - start).count()
-        << "ms.: Finished multiplication.\n";
+    std::cout << "\r>> 33%";
 
     c  = a;
     c /= b;
 
-    end = high_resolution_clock::now();
-    std::cout
-        << duration_cast<milliseconds>(end - start).count()
-        << "ms.: Finished division.\n";
+    a.resize(0);
+    b.resize(0);
+    std::cout << "\r>> 67%";
 
     d += c;
 
     end = high_resolution_clock::now();
-
     std::cout
+        << "\r>> "
         << duration_cast<seconds>(end- start).count()
         << "s.: Finished final on four vectors, each "
         << ((elems * 4) / 1024.f) / 1024.f
-        << "MB of 32-bit floats." << std::endl;
+        << "MB of 32-bit floats.";
 
     return 0;
 }
