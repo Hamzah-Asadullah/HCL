@@ -3,7 +3,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstdint>
-#include <omp.h>
+#include <stdexcept>
 
 #include "./aligned_malloc.cpp"
 
@@ -156,8 +156,22 @@ std::size_t i = 0, simd_range = a.n_elems - batch_size;
             n_elems = 0;
         }
 
-        float& operator[] (std::size_t i) { return mem[i]; }
-        const float& operator[] (std::size_t i) const { return mem[i]; }
+        float& operator[] (std::size_t i)
+        {
+#ifdef DEBUG
+            if (i >= n_elems)
+                throw std::runtime_error("HCL::vector_f32 (operator[]): Vector subscript out of range.");
+#endif
+            return mem[i];
+        }
+        const float& operator[] (std::size_t i) const
+        {
+#ifdef DEBUG
+            if (i >= n_elems)
+                throw std::runtime_error("HCL::vector_f32 (operator[]): Vector subscript out of range.");
+#endif
+            return mem[i];
+        }
 
         void operator= (const vector_f32& vec)
         {
