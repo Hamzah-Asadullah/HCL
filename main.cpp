@@ -8,7 +8,7 @@
 #undef DEBUG
 #endif
 
-#ifdef _WIN32
+#ifdef _WIN32 // For UTF
 #include <windows.h>
 #endif
 
@@ -20,9 +20,11 @@ int main()
     SetConsoleOutputCP(CP_UTF8);
     #endif
 
-    std::size_t elems = 0;
-    std::cout << ">_ Enter MB of mem to use: ";
+    std::size_t elems = 0; // If that's 0 it'll prompt
+
+    if (elems == 0)
     {
+        std::cout << ">_ Enter MB of RAM to use: ";
         std::string tmp("");
         std::getline(std::cin, tmp);
         
