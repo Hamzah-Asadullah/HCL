@@ -19,88 +19,36 @@ namespace HCL
         std::size_t n_elems;
         bool columnvector = true;
 
-        void add(vector_f32& a, const vector_f32& b, const vector_f32& c)
+        static __m256 add(const __m256& a, const __m256& b) { return _mm256_add_ps(a, b); }
+        static __m256 sub(const __m256& a, const __m256& b) { return _mm256_sub_ps(a, b); }
+        static __m256 mul(const __m256& a, const __m256& b) { return _mm256_mul_ps(a, b); }
+        static __m256 div(const __m256& a, const __m256& b) { return _mm256_div_ps(a, b); }
+
+        void AVX2_prtn
+        (
+            vector_f32& a, const vector_f32& b, const vector_f32& c,
+            __m256 (*f) (const __m256&, const __m256&)
+        )
         {
 #ifdef DEBUG
             if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f32 (add): Both vectors need to be of same length.");
+                throw std::runtime_error("HCL::vector_f32 (AVX2_prtn): Both vectors need to be of same length.");
 #endif
             constexpr unsigned short batch_size = 8; // 256 / 32 = 8
-            std::size_t i = 0, simd_range = a.n_elems - batch_size;
+            std::intmax_t i = 0, simd_range = a.n_elems - batch_size;
+            // signed since under 8 elems get's negative => seg error
+            // i is signed to avoid conversion on stuff like -O0
 
             for (; i <= simd_range; i += batch_size)
             {
                 __m256 vb = _mm256_load_ps(&b[i]);
                 __m256 vc = _mm256_load_ps(&c[i]);
-                __m256 va = _mm256_add_ps(vb, vc);
+                __m256 va = f(vb, vc);
                 _mm256_store_ps(&a[i], va);
             }
 
             for (; i < a.n_elems; ++i)
                 a[i] = b[i] + c[i];
-        }
-
-        void subtract(vector_f32& a, const vector_f32& b, const vector_f32& c)
-        {
-#ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f32 (subtract): Both vectors need to be of same length.");
-#endif
-            constexpr unsigned short batch_size = 8; // 256 / 32 = 8
-std::size_t i = 0, simd_range = a.n_elems - batch_size;
-
-            for (; i <= simd_range; i += batch_size)
-            {
-                __m256 vb = _mm256_load_ps(&b[i]);
-                __m256 vc = _mm256_load_ps(&c[i]);
-                __m256 va = _mm256_sub_ps(vb, vc);
-                _mm256_store_ps(&a[i], va);
-            }
-
-            for (; i < a.n_elems; ++i)
-                a[i] = b[i] - c[i];
-        }
-
-        void multiply(vector_f32& a, const vector_f32& b, const vector_f32& c)
-        {
-#ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f32 (multiply): Both vectors need to be of same length.");
-#endif
-            constexpr unsigned short batch_size = 8; // 256 / 32 = 8
-std::size_t i = 0, simd_range = a.n_elems - batch_size;
-
-            for (; i <= simd_range; i += batch_size)
-            {
-                __m256 vb = _mm256_load_ps(&b[i]);
-                __m256 vc = _mm256_load_ps(&c[i]);
-                __m256 va = _mm256_mul_ps(vb, vc);
-                _mm256_store_ps(&a[i], va);
-            }
-
-            for (; i < a.n_elems; ++i)
-                a[i] = b[i] * c[i];
-        }
-
-        void divide(vector_f32& a, const vector_f32& b, const vector_f32& c)
-        {
-#ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f32 (divide): Both vectors need to be of same length.");
-#endif
-            constexpr unsigned short batch_size = 8; // 256 / 32 = 8
-std::size_t i = 0, simd_range = a.n_elems - batch_size;
-
-            for (; i <= simd_range; i += batch_size)
-            {
-                __m256 vb = _mm256_load_ps(&b[i]);
-                __m256 vc = _mm256_load_ps(&c[i]);
-                __m256 va = _mm256_div_ps(vb, vc);
-                _mm256_store_ps(&a[i], va);
-            }
-
-            for (; i < a.n_elems; ++i)
-                a[i] = b[i] / c[i];
         }
 
     public:
@@ -182,33 +130,33 @@ std::size_t i = 0, simd_range = a.n_elems - batch_size;
             columnvector = vec.columnvector;
         }
 
-        void operator+= (const vector_f32& vec) { add(*this, *this, vec); }
-        void operator-= (const vector_f32& vec) { subtract(*this, *this, vec); }
-        void operator*= (const vector_f32& vec) { multiply(*this, *this, vec); }
-        void operator/= (const vector_f32& vec) { divide(*this, *this, vec); }
+        void operator+= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, add); }
+        void operator-= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, sub); }
+        void operator*= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, mul); }
+        void operator/= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, div); }
 
         vector_f32 operator+ (const vector_f32& vec)
         {
             vector_f32 tmp(n_elems);
-            if (tmp.mem != nullptr) add(tmp, *this, vec);
+            if (tmp.mem != nullptr) AVX2_prtn(tmp, *this, vec, add);
             return tmp;
         }
         vector_f32 operator- (const vector_f32& vec)
         {
             vector_f32 tmp(n_elems);
-            if (tmp.mem != nullptr) subtract(tmp, *this, vec);
+            if (tmp.mem != nullptr) AVX2_prtn(tmp, *this, vec, sub);
             return tmp;
         }
         vector_f32 operator* (const vector_f32& vec)
         {
             vector_f32 tmp(n_elems);
-            if (tmp.mem != nullptr) multiply(tmp, *this, vec);
+            if (tmp.mem != nullptr) AVX2_prtn(tmp, *this, vec, mul);
             return tmp;
         }
         vector_f32 operator/ (const vector_f32& vec)
         {
             vector_f32 tmp(n_elems);
-            if (tmp.mem != nullptr) divide(tmp, *this, vec);
+            if (tmp.mem != nullptr) AVX2_prtn(tmp, *this, vec, div);
             return tmp;
         }
 
