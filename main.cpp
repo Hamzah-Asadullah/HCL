@@ -12,6 +12,8 @@
 #include <windows.h>
 #endif
 
+#define TYPE float
+
 using namespace std::chrono;
 
 int main()
@@ -21,6 +23,8 @@ int main()
     #endif
 
     std::size_t elems = 0; // If that's 0 it'll prompt
+    std::size_t vectors = 4;
+    std::size_t bytes = sizeof(TYPE);
 
     if (elems == 0)
     {
@@ -33,44 +37,43 @@ int main()
             elems = std::max
             (
                 std::size_t(1),
-                std::size_t(((std::stoull(tmp) * 1024 * 1024) / sizeof(float)) / 4)
+                std::size_t(((std::stoull(tmp) * 1024 * 1024) / bytes) / vectors)
             );
-            std::cout << ">> Set to " << elems << " numbers per vector.\n>> 0%";
+            std::cout << ">> Set to " << elems << " numbers per vector.\n";
         }
         catch (...)
         {
-            std::cout << ">> Didn't enter a valid number \U0001F937";
+            std::cout << ">> Didn't enter a valid number \U0001F937\n";
             return -1;
         }
     }
 
-    HCL::vector_f32 a(elems); a.setX(17);
-    HCL::vector_f32 b(elems); b.setX(16);
-    HCL::vector_f32 c(elems), d(elems);
+    HCL::vector_f32 vec[vectors];
+    for (std::size_t v = 0; v < vectors; ++v)
+    {
+        vec[v].resize(elems);
+        vec[v].setX(0.0125f); // some compilers optimize 0 away I guess
+    }
 
     time_point start = high_resolution_clock::now(), end = start;
-    
-    // operation, one-lined but ~50% slower (due temp. copies): d = a * b + a / b;
-    d  = a;
-    d *= b;
-    std::cout << "\r>> 33%";
+    for (std::size_t v = 0; v < vectors; ++v)
+    {
+        vec[0] += vec[v];
+        vec[0] *= vec[v];
+        vec[0] -= vec[v];
+        vec[0] /= vec[v];
 
-    c  = a;
-    c /= b;
-
-    a.resize(0);
-    b.resize(0);
-    std::cout << "\r>> 67%";
-
-    d += c;
-
+        if (v != 0)
+            vec[v].resize(0);
+    }
     end = high_resolution_clock::now();
+
     std::cout
         << "\r>> "
-        << duration_cast<seconds>(end- start).count()
-        << "s.: Finished final on four vectors, each "
-        << ((elems * 4) / 1024.f) / 1024.f
-        << "MB of 32-bit floats.";
+        << duration_cast<seconds>(end - start).count()
+        << "s.: Finished final on " << vectors << " vectors, each "
+        << ((elems * bytes) / 1024.f) / 1024.f
+        << "MB of 32-bit floats \U0001F618";
 
     return 0;
 }

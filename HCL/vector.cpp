@@ -1,5 +1,6 @@
 #include <immintrin.h>
 #include <thread>
+#include <algorithm>
 #include <iostream>
 #include <cstdlib>
 #include <cstdint>
@@ -12,18 +13,176 @@
 
 namespace HCL
 {
-    class vector_f32
+    template <typename T>
+    class vector_vanilla
     {
     private:
-        float* mem = nullptr;
+        T* mem = nullptr;
         std::size_t n_elems;
-        bool columnvector = true;
 
+    public:
+        bool is_column = true;
+
+        vector_vanilla(): mem(nullptr), n_elems(0), is_column(true) {}
+        vector_vanilla(std::size_t elems) { resize(elems); }
+
+        std::size_t size() const { return n_elems; }
+        void transpose() { is_column = !is_column; }
+        const T* data() const { return mem; }
+
+        std::size_t resize(std::size_t elems)
+        {
+            if (elems == n_elems)
+            {
+                setX(T(0));
+                return n_elems;
+            }
+            else
+            {
+                _free();
+                if (elems == 0)
+                    return n_elems;
+            }
+
+            mem = simple_aligned_malloc<T>(sizeof(T) * 8, sizeof(T) * elems);
+            if (mem == nullptr) _free();
+            else
+            {
+                n_elems = elems;
+                setX(T(0));
+            }
+            return n_elems;
+        }
+
+        void setX(T x)
+        {
+            for (std::size_t i = 0; i < n_elems; ++i)
+                mem[i] = x;
+        }
+
+        void applyFn(T (*fn) (const T&))
+        {
+            for (std::size_t i = 0; i < n_elems; ++i)
+                mem[i] = fn(mem[i]);
+        }
+
+        void _free()
+        {
+            if (mem != nullptr)
+            {
+                simple_aligned_free<T>(mem);
+                mem = nullptr;
+            }
+            n_elems = 0;
+        }
+
+        T& operator[] (std::size_t i)
+        {
+#ifdef DEBUG
+            if (i >= n_elems)
+                throw std::runtime_error("HCL::vector_vanilla operator[]: Vector subscript out of range.");
+#endif
+            return mem[i];
+        }
+
+        const T& operator[] (std::size_t i) const
+        {
+#ifdef DEBUG
+            if (i >= n_elems)
+                throw std::runtime_error("HCL::vector_vanilla operator[]: Vector subscript out of range.");
+#endif
+            return mem[i];
+        }
+
+        void operator= (const vector_vanilla<T>& vec)
+        {
+            if (vec.size() != n_elems)
+                resize(vec.size());
+
+            std::copy(&(vec[0]), &(vec[n_elems]), &(mem[0]));
+            is_column = vec.is_column;
+        }
+
+        ~vector_vanilla() { _free(); }
+    };
+
+    class vector_f64 : public vector_vanilla<double>
+    {
+    private:
+        static __m256d add(const __m256d& a, const __m256d& b) { return _mm256_add_pd(a, b); }
+        static __m256d sub(const __m256d& a, const __m256d& b) { return _mm256_sub_pd(a, b); }
+        static __m256d mul(const __m256d& a, const __m256d& b) { return _mm256_mul_pd(a, b); }
+        static __m256d div(const __m256d& a, const __m256d& b) { return _mm256_div_pd(a, b); }
+    
+        void AVX2_prtn
+        (
+            vector_f64& a, const vector_f64& b, const vector_f64& c,
+            __m256d (*f) (const __m256d&, const __m256d&)
+        )
+        {
+#ifdef DEBUG
+            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
+                throw std::runtime_error("HCL::vector_f64 (AVX2_prtn): Both vectors need to be of same length.");
+#endif
+            constexpr unsigned short batch_size = 4; // 256 / 64 = 4
+            std::intmax_t i = 0, simd_range = a.size() - batch_size;
+            // signed since under 8 elems get's negative => seg error
+            // i is signed to avoid conversion on stuff like -O0
+
+            for (; i <= simd_range; i += batch_size)
+            {
+                __m256d vb = _mm256_load_pd(&b[i]);
+                __m256d vc = _mm256_load_pd(&c[i]);
+                __m256d va = f(vb, vc);
+                _mm256_store_pd(&a[i], va);
+            }
+
+            for (; i < a.size(); ++i)
+                a[i] = b[i] + c[i];
+        }
+
+    public:
+        using vector_vanilla<double>::vector_vanilla;    
+
+        void operator+= (const vector_f64& vec) { AVX2_prtn(*this, *this, vec, add); }
+        void operator-= (const vector_f64& vec) { AVX2_prtn(*this, *this, vec, sub); }
+        void operator*= (const vector_f64& vec) { AVX2_prtn(*this, *this, vec, mul); }
+        void operator/= (const vector_f64& vec) { AVX2_prtn(*this, *this, vec, div); }
+
+        vector_f64 operator+ (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, add);
+            return tmp;
+        }
+        vector_f64 operator- (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, sub);
+            return tmp;
+        }
+        vector_f64 operator* (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, mul);
+            return tmp;
+        }
+        vector_f64 operator/ (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, div);
+            return tmp;
+        }
+    };
+
+    class vector_f32 : public vector_vanilla<float>
+    {
+    private:
         static __m256 add(const __m256& a, const __m256& b) { return _mm256_add_ps(a, b); }
         static __m256 sub(const __m256& a, const __m256& b) { return _mm256_sub_ps(a, b); }
         static __m256 mul(const __m256& a, const __m256& b) { return _mm256_mul_ps(a, b); }
         static __m256 div(const __m256& a, const __m256& b) { return _mm256_div_ps(a, b); }
-
+    
         void AVX2_prtn
         (
             vector_f32& a, const vector_f32& b, const vector_f32& c,
@@ -32,12 +191,10 @@ namespace HCL
         {
 #ifdef DEBUG
             if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f32 (AVX2_prtn): Both vectors need to be of same length.");
+                throw std::runtime_error("HCL::vector_f64 (AVX2_prtn): Both vectors need to be of same length.");
 #endif
-            constexpr unsigned short batch_size = 8; // 256 / 32 = 8
-            std::intmax_t i = 0, simd_range = a.n_elems - batch_size;
-            // signed since under 8 elems get's negative => seg error
-            // i is signed to avoid conversion on stuff like -O0
+            constexpr unsigned short batch_size = 8; // 256 / 32 = 4
+            std::intmax_t i = 0, simd_range = a.size() - batch_size;
 
             for (; i <= simd_range; i += batch_size)
             {
@@ -47,88 +204,12 @@ namespace HCL
                 _mm256_store_ps(&a[i], va);
             }
 
-            for (; i < a.n_elems; ++i)
+            for (; i < a.size(); ++i)
                 a[i] = b[i] + c[i];
         }
 
     public:
-        vector_f32(): mem(nullptr), n_elems(0), columnvector(true) {}
-        vector_f32(std::size_t elems) { resize(elems); }
-
-        std::size_t size() const { return n_elems; }
-        void transpose() { columnvector = !columnvector; }
-        bool is_column() const { return columnvector; }
-        const float* data() const { return &mem[0]; }
-
-        void resize(std::size_t elems)
-        {
-            if (elems == n_elems) setX(0);
-            else
-            {
-                _free();
-                if (elems == 0) return;
-            }
-
-            mem = simple_aligned_malloc<float>(32, sizeof(float) * elems);
-            if (mem == nullptr)
-            {
-                _free();
-                std::cerr << ">> Failed to allocate " << (sizeof(float) * elems) / 1024 << "kB\n";
-            }
-            else
-            {
-                n_elems = elems;
-                setX(float(0));
-            }
-        }
-
-        void setX(float x)
-        {
-            for (std::size_t i = 0; i < n_elems; ++i)
-                mem[i] = x;
-        }
-
-        void applyFun(float (*fun) (const float&))
-        {
-            for (std::size_t i = 0; i < n_elems; ++i)
-                mem[i] = fun(mem[i]);
-        }
-
-        void _free()
-        {
-            if (mem != nullptr)
-            {
-                simple_aligned_free<float>(mem);
-                mem = nullptr;
-            }
-            n_elems = 0;
-        }
-
-        float& operator[] (std::size_t i)
-        {
-#ifdef DEBUG
-            if (i >= n_elems)
-                throw std::runtime_error("HCL::vector_f32 (operator[]): Vector subscript out of range.");
-#endif
-            return mem[i];
-        }
-        const float& operator[] (std::size_t i) const
-        {
-#ifdef DEBUG
-            if (i >= n_elems)
-                throw std::runtime_error("HCL::vector_f32 (operator[]): Vector subscript out of range.");
-#endif
-            return mem[i];
-        }
-
-        void operator= (const vector_f32& vec)
-        {
-            if (n_elems != vec.n_elems)
-                resize(vec.n_elems);
-            for (std::size_t i = 0; i < n_elems; ++i)
-                mem[i] = vec[i];
-            columnvector = vec.columnvector;
-        }
+        using vector_vanilla<float>::vector_vanilla;    
 
         void operator+= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, add); }
         void operator-= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, sub); }
@@ -137,38 +218,36 @@ namespace HCL
 
         vector_f32 operator+ (const vector_f32& vec)
         {
-            vector_f32 tmp(n_elems);
-            if (tmp.mem != nullptr) AVX2_prtn(tmp, *this, vec, add);
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, add);
             return tmp;
         }
         vector_f32 operator- (const vector_f32& vec)
         {
-            vector_f32 tmp(n_elems);
-            if (tmp.mem != nullptr) AVX2_prtn(tmp, *this, vec, sub);
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, sub);
             return tmp;
         }
         vector_f32 operator* (const vector_f32& vec)
         {
-            vector_f32 tmp(n_elems);
-            if (tmp.mem != nullptr) AVX2_prtn(tmp, *this, vec, mul);
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, mul);
             return tmp;
         }
         vector_f32 operator/ (const vector_f32& vec)
         {
-            vector_f32 tmp(n_elems);
-            if (tmp.mem != nullptr) AVX2_prtn(tmp, *this, vec, div);
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, div);
             return tmp;
         }
-
-        ~vector_f32() { _free(); }
     };
 };
 
 template <typename T>
-std::ostream& operator<< (std::ostream& os, const HCL::vector_f32& vec)
+std::ostream& operator<< (std::ostream& os, const HCL::vector_vanilla<T>& vec)
 {
     std::size_t till = vec.size() - 1;
-    if (vec.is_column())
+    if (vec.is_column)
     {
         for (std::size_t i = 0; i < till; ++i)
             os << "[ " << vec[i] << " ]\n";
