@@ -20,3 +20,7 @@ As of _10/05/2025_, following containers are native in HCL:
 
 This allows me and you to add support for your own type, and its optimizations, directly to the library, simply by deriving from the base class and overloading operators like `*=` efficiently.  
 You can find a demo of the library using `HCL::vector_f32` (including time-based benchmarking) in the `main.cpp`.
+
+**View Counter**
+
+![View Counter Visual Image](https://count.getloli.com/@Hamzah-Asadullah_HCL?name=Hamzah-Asadullah_HCL&theme=booru-lewd&padding=8&offset=0&align=center&scale=1&pixelated=1&darkmode=auto)
