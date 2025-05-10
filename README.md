@@ -23,4 +23,4 @@ You can find a demo of the library using `HCL::vector_f32` (including time-based
 
 **View Counter**
 
-![View Counter Visual Image](https://count.getloli.com/@Hamzah-Asadullah_HCL?name=Hamzah-Asadullah_HCL&theme=booru-lewd&padding=8&offset=0&align=center&scale=1&pixelated=1&darkmode=auto)
+![View Counter Visual Image](https://count.getloli.com/@Hamzah-Asadullah_HCL?name=Hamzah-Asadullah_HCL&theme=booru-lewd&padding=1&offset=0&align=center&scale=1&pixelated=0&darkmode=auto)
