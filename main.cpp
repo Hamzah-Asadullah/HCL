@@ -4,10 +4,6 @@
 
 #include "./HCL/vector.cpp"
 
-#ifdef DEBUG
-#undef DEBUG
-#endif
-
 #ifdef _WIN32 // For UTF
 #include <windows.h>
 #endif
@@ -48,23 +44,34 @@ int main()
         }
     }
 
+    bool thread_set = false;
+    do
+    {
+        std::cout << "\r>_ Enter amounts of threads to use (will be managed by OMP): ";
+        std::string tmp("");
+        std::getline(std::cin, tmp);
+
+        try { omp_set_num_threads(std::stoi(tmp)); thread_set = true; }
+        catch (...) {}
+    }
+    while (!thread_set);
+
     HCL::vector_f32 vec[vectors];
     for (std::size_t v = 0; v < vectors; ++v)
     {
-        vec[v].resize(elems);
-        vec[v].setX(0.0125f); // some compilers optimize 0 away I guess
+        if (vec[v].resize(elems) == 0) std::cout << "Failed to allocate memory for vector" << v + 1 << ", expect a crash.\n";
+        vec[v].setX(5);
     }
 
+    // On GCC / G++ / MinGW, it'll most likely always return a thread count of 1. Can't do anything about it.
+    std::cout << ">> Starting calculations using " << omp_get_num_threads() << " threads managed by OMP.";
     time_point start = high_resolution_clock::now(), end = start;
-    for (std::size_t v = 0; v < vectors; ++v)
+    for (std::size_t v = 1; v < vectors; ++v) // v = 1 to avoid div through 0 crashes
     {
         vec[0] += vec[v];
         vec[0] *= vec[v];
         vec[0] -= vec[v];
         vec[0] /= vec[v];
-
-        if (v != 0)
-            vec[v].resize(0);
     }
     end = high_resolution_clock::now();
 
@@ -73,7 +80,7 @@ int main()
         << duration_cast<seconds>(end - start).count()
         << "s.: Finished final on " << vectors << " vectors, each "
         << ((elems * bytes) / 1024.f) / 1024.f
-        << "MB of 32-bit floats \U0001F618";
+        << "MB of 32-bit floats \U0001F618\n";
 
     return 0;
 }

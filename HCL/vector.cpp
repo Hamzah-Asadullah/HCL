@@ -1,10 +1,10 @@
 #include <immintrin.h>
-#include <thread>
 #include <algorithm>
 #include <iostream>
 #include <cstdlib>
 #include <cstdint>
 #include <stdexcept>
+#include <omp.h>
 
 #include "./aligned_malloc.cpp"
 
@@ -43,8 +43,9 @@ namespace HCL
                 if (elems == 0)
                     return n_elems;
             }
-
-            mem = simple_aligned_malloc<T>(sizeof(T) * 8, sizeof(T) * elems);
+        
+            std::size_t block_size = std::max(sizeof(T) * 8, alignof(std::max_align_t));
+            mem = simple_aligned_malloc<T>(block_size, sizeof(T) * elems);
             if (mem == nullptr) _free();
             else
             {
@@ -125,11 +126,10 @@ namespace HCL
                 throw std::runtime_error("HCL::vector_f64 (AVX2_prtn): Both vectors need to be of same length.");
 #endif
             constexpr unsigned short batch_size = 4; // 256 / 64 = 4
-            std::intmax_t i = 0, simd_range = a.size() - batch_size;
-            // signed since under 8 elems get's negative => seg error
-            // i is signed to avoid conversion on stuff like -O0
+            std::size_t simd_range = a.size() - batch_size;
 
-            for (; i <= simd_range; i += batch_size)
+#pragma omp parallel for
+            for (std::intmax_t i = 0; i <= simd_range; i += batch_size)
             {
                 __m256d vb = _mm256_load_pd(&b[i]);
                 __m256d vc = _mm256_load_pd(&c[i]);
@@ -137,7 +137,8 @@ namespace HCL
                 _mm256_store_pd(&a[i], va);
             }
 
-            for (; i < a.size(); ++i)
+#pragma omp parallel for
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = b[i] + c[i];
         }
 
@@ -191,12 +192,14 @@ namespace HCL
         {
 #ifdef DEBUG
             if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f64 (AVX2_prtn): Both vectors need to be of same length.");
+                throw std::runtime_error("HCL::vector_f32 (AVX2_prtn): Both vectors need to be of same length.");
 #endif
-            constexpr unsigned short batch_size = 8; // 256 / 32 = 4
-            std::intmax_t i = 0, simd_range = a.size() - batch_size;
 
-            for (; i <= simd_range; i += batch_size)
+            constexpr unsigned short batch_size = 8; // 256 / 32 = 8
+            std::size_t simd_range = a.size() - batch_size;
+
+#pragma omp parallel for
+            for (std::intmax_t i = 0; i <= simd_range; i += batch_size)
             {
                 __m256 vb = _mm256_load_ps(&b[i]);
                 __m256 vc = _mm256_load_ps(&c[i]);
@@ -204,7 +207,8 @@ namespace HCL
                 _mm256_store_ps(&a[i], va);
             }
 
-            for (; i < a.size(); ++i)
+#pragma omp parallel for
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = b[i] + c[i];
         }
 
@@ -238,6 +242,46 @@ namespace HCL
         {
             vector_f32 tmp(size());
             if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, div);
+            return tmp;
+        }
+    };
+
+    class vector_i8 : public vector_vanilla<int8_t>
+    {
+    public:
+        using vector_vanilla<int8_t>::vector_vanilla;    
+
+        void operator+= (const vector_i8& vec) { for (std::size_t i = 0; i < size(); ++i) (*this)[i] += vec[i]; }
+        void operator-= (const vector_i8& vec) { for (std::size_t i = 0; i < size(); ++i) (*this)[i] -= vec[i]; }
+        void operator*= (const vector_i8& vec) { for (std::size_t i = 0; i < size(); ++i) (*this)[i] *= vec[i]; }
+        void operator/= (const vector_i8& vec) { for (std::size_t i = 0; i < size(); ++i) (*this)[i] /= vec[i]; }
+
+        vector_i8 operator+ (const vector_i8& vec)
+        {
+            vector_i8 tmp(size());
+            for (std::size_t i = 0; i < tmp.size(); ++i)
+                (*this)[i] += vec[i];
+            return tmp;
+        }
+        vector_i8 operator- (const vector_i8& vec)
+        {
+            vector_i8 tmp(size());
+            for (std::size_t i = 0; i < tmp.size(); ++i)
+                (*this)[i] -= vec[i];
+            return tmp;
+        }
+        vector_i8 operator* (const vector_i8& vec)
+        {
+            vector_i8 tmp(size());
+            for (std::size_t i = 0; i < tmp.size(); ++i)
+                (*this)[i] *= vec[i];
+            return tmp;
+        }
+        vector_i8 operator/ (const vector_i8& vec)
+        {
+            vector_i8 tmp(size());
+            for (std::size_t i = 0; i < tmp.size(); ++i)
+                (*this)[i] /= vec[i];
             return tmp;
         }
     };
