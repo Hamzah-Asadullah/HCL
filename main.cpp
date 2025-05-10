@@ -8,6 +8,10 @@
 #include <windows.h>
 #endif
 
+#ifdef DEBUG
+#undef DEBUG
+#endif
+
 #define TYPE float
 
 using namespace std::chrono;

@@ -184,11 +184,7 @@ namespace HCL
         static __m256 mul(const __m256& a, const __m256& b) { return _mm256_mul_ps(a, b); }
         static __m256 div(const __m256& a, const __m256& b) { return _mm256_div_ps(a, b); }
     
-        void AVX2_prtn
-        (
-            vector_f32& a, const vector_f32& b, const vector_f32& c,
-            __m256 (*f) (const __m256&, const __m256&)
-        )
+        void AVX2_prtn(vector_f32& a, const vector_f32& b, const vector_f32& c, __m256 (*f) (const __m256&, const __m256&))
         {
 #ifdef DEBUG
             if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
@@ -248,40 +244,87 @@ namespace HCL
 
     class vector_i8 : public vector_vanilla<int8_t>
     {
-    public:
-        using vector_vanilla<int8_t>::vector_vanilla;    
+    private:
+        static __m256i add(const __m256i& a, const __m256i& b) { return _mm256_adds_epi8(a, b); }
+        static __m256i sub(const __m256i& a, const __m256i& b) { return _mm256_subs_epi8(a, b); }
 
-        void operator+= (const vector_i8& vec) { for (std::size_t i = 0; i < size(); ++i) (*this)[i] += vec[i]; }
-        void operator-= (const vector_i8& vec) { for (std::size_t i = 0; i < size(); ++i) (*this)[i] -= vec[i]; }
-        void operator*= (const vector_i8& vec) { for (std::size_t i = 0; i < size(); ++i) (*this)[i] *= vec[i]; }
-        void operator/= (const vector_i8& vec) { for (std::size_t i = 0; i < size(); ++i) (*this)[i] /= vec[i]; }
+        void mul(vector_i8& a, const vector_i8& b, const vector_i8& c)
+        {
+#ifdef DEBUG
+            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
+                throw std::runtime_error("HCL::vector_i8 (mul): Both vectors need to be of same length.");
+#endif
+#pragma omp parallel for
+            for (std::size_t i = 0; i < a.size(); ++i)
+                a[i] = b[i] * c[i];
+        }
+
+        void div(vector_i8& a, const vector_i8& b, const vector_i8& c)
+        {
+#ifdef DEBUG
+            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
+                throw std::runtime_error("HCL::vector_i8 (mul): Both vectors need to be of same length.");
+#endif
+#pragma omp parallel for
+            for (std::size_t i = 0; i < a.size(); ++i)
+                a[i] = b[i] / c[i];
+        }
+
+        void AVX2_prtn(vector_i8& a, const vector_i8& b, const vector_i8& c, __m256i (*f) (const __m256i&, const __m256i&))
+        {
+#ifdef DEBUG
+            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
+                throw std::runtime_error("HCL::vector_i8 (AVX2_prtn): Both vectors need to be of same length.");
+#endif
+            constexpr unsigned short batch_size = 32;
+            std::size_t simd_range = a.size() - batch_size;
+
+#pragma omp parallel for
+            for (std::size_t i = 0; i < simd_range; i += batch_size)
+            {
+                __m256i vb = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b[i]));
+                __m256i vc = _mm256_load_si256(reinterpret_cast<const __m256i*>(&c[i]));
+                __m256i va = f(vb, vc);
+                _mm256_store_si256(reinterpret_cast<__m256i*>(&a[i]), va);
+            }
+
+#pragma omp parallel for
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
+                a[i] = b[i] + c[i];
+        }
+
+    public:
+        using vector_vanilla<int8_t>::vector_vanilla;
+
+        void operator+= (const vector_i8& vec) { AVX2_prtn(*this, *this, vec, add); }
+        void operator-= (const vector_i8& vec) { AVX2_prtn(*this, *this, vec, sub); }
+        void operator*= (const vector_i8& vec) { mul(*this, *this, vec); }
+        void operator/= (const vector_i8& vec) { div(*this, *this, vec); }
 
         vector_i8 operator+ (const vector_i8& vec)
         {
             vector_i8 tmp(size());
-            for (std::size_t i = 0; i < tmp.size(); ++i)
-                (*this)[i] += vec[i];
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, add);
             return tmp;
         }
         vector_i8 operator- (const vector_i8& vec)
         {
             vector_i8 tmp(size());
-            for (std::size_t i = 0; i < tmp.size(); ++i)
-                (*this)[i] -= vec[i];
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, sub);
             return tmp;
         }
         vector_i8 operator* (const vector_i8& vec)
         {
             vector_i8 tmp(size());
-            for (std::size_t i = 0; i < tmp.size(); ++i)
-                (*this)[i] *= vec[i];
+            if (tmp.data() != nullptr)
+                mul(tmp, *this, vec);
             return tmp;
         }
         vector_i8 operator/ (const vector_i8& vec)
         {
             vector_i8 tmp(size());
-            for (std::size_t i = 0; i < tmp.size(); ++i)
-                (*this)[i] /= vec[i];
+            if (tmp.data() != nullptr)
+                div(tmp, *this, vec);
             return tmp;
         }
     };
@@ -290,11 +333,13 @@ namespace HCL
 template <typename T>
 std::ostream& operator<< (std::ostream& os, const HCL::vector_vanilla<T>& vec)
 {
+    if (vec.size() == 0) return os;
     std::size_t till = vec.size() - 1;
     if (vec.is_column)
     {
-        for (std::size_t i = 0; i < till; ++i)
-            os << "[ " << vec[i] << " ]\n";
+        os << "[ " << vec[0] << " ]";
+        for (std::size_t i = 1; i < till; ++i)
+            os << "| " << vec[i] << " |\n";
         os << "[ " << vec[till] << " ]";
     }
     else
