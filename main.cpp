@@ -2,17 +2,17 @@
 #include <chrono>
 #include <string>
 
+#ifdef DEBUG
+#undef DEBUG
+#endif
+
 #include "./HCL/vector.cpp"
 
 #ifdef _WIN32 // For UTF
 #include <windows.h>
 #endif
 
-#ifdef DEBUG
-#undef DEBUG
-#endif
-
-#define TYPE float
+#define TYPE int8_t
 
 using namespace std::chrono;
 
@@ -20,6 +20,16 @@ int main()
 {
     #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
+    #endif
+
+    #ifdef __AVX2__
+    std::cout << ">> AVX2 found, will most likely not crash.\n";
+    #else
+    #ifdef __AVX__
+    std::cout << ">> AVX found, will most likely not crash.\n";
+    #else
+    std::cout << ">> Both AVX2 and AVX missing; falling back to scalar. Will be \"slow\".\n";
+    #endif
     #endif
 
     std::size_t elems = 0; // If that's 0 it'll prompt
@@ -60,7 +70,7 @@ int main()
     }
     while (!thread_set);
 
-    HCL::vector_f32 vec[vectors];
+    HCL::vector_i8 vec[vectors];
     for (std::size_t v = 0; v < vectors; ++v)
     {
         if (vec[v].resize(elems) == 0) std::cout << "Failed to allocate memory for vector" << v + 1 << ", expect a crash.\n";
@@ -84,7 +94,7 @@ int main()
         << duration_cast<seconds>(end - start).count()
         << "s.: Finished final on " << vectors << " vectors, each "
         << ((elems * bytes) / 1024.f) / 1024.f
-        << "MB of 32-bit floats \U0001F618\n";
+        << "MB \U0001F618\n";
 
     return 0;
 }
