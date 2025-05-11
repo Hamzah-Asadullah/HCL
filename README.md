@@ -19,7 +19,7 @@ As of _10/05/2025_, following containers are native in HCL:
 - `vector_i8`: a `int8_t` / `unsigned char` container which does uses OMP and partially SIMD as full support for SIMD (mainly mult & div) is weird 
 
 This allows me and you to add support for your own type, and its optimizations, directly to the library, simply by deriving from the base class and overloading operators like `*=` efficiently.  
-You can find a demo of the library using `HCL::vector_f32` (including time-based benchmarking) in the `main.cpp`.
+You can find a demo of the library using `HCL::vector_i8` (including time-based benchmarking) in the `main.cpp`.
 
 **View Counter**
 
