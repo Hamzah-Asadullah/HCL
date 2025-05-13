@@ -301,12 +301,23 @@ namespace HCL
     class vector_f32 : public vector_vanilla<float>
     {
     private:
+        static float add(const float& a, const float& b) { return a + b; }
+        static float sub(const float& a, const float& b) { return a - b; }
+        static float mul(const float& a, const float& b) { return a * b; }
+        static float div(const float& a, const float& b) { return a / b; }
+
+        #ifdef __AVX2__
         static __m256 add(const __m256& a, const __m256& b) { return _mm256_add_ps(a, b); }
         static __m256 sub(const __m256& a, const __m256& b) { return _mm256_sub_ps(a, b); }
         static __m256 mul(const __m256& a, const __m256& b) { return _mm256_mul_ps(a, b); }
         static __m256 div(const __m256& a, const __m256& b) { return _mm256_div_ps(a, b); }
     
-        void AVX2_prtn(vector_f32& a, const vector_f32& b, const vector_f32& c, __m256 (*f) (const __m256&, const __m256&))
+        void AVX2_prtn
+        (
+            vector_f32& a, const vector_f32& b, const vector_f32& c,
+            __m256 (*f) (const __m256&, const __m256&),
+            float (*fs) (const float&, const float&)
+        )
         {
 #ifdef DEBUG
             if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
@@ -327,41 +338,110 @@ namespace HCL
 
 #pragma omp parallel for
             for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
-                a[i] = b[i] + c[i];
+                a[i] = fs(b[i], c[i]);
         }
+        #elif defined(__AVX__)
+        static __m128 add(const __m128& a, const __m128& b) { return _mm_add_ps(a, b); }
+        static __m128 sub(const __m128& a, const __m128& b) { return _mm_sub_ps(a, b); }
+        static __m128 mul(const __m128& a, const __m128& b) { return _mm_mul_ps(a, b); }
+        static __m128 div(const __m128& a, const __m128& b) { return _mm_div_ps(a, b); }
+
+        void AVX_prtn
+        (
+            vector_f32& a, const vector_f32& b, const vector_f32& c,
+            __m128 (*f) (const __m128&, const __m128&),
+            float (*fs) (const float&, const float&)
+        )
+        {
+#ifdef DEBUG
+            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
+                throw std::runtime_error("HCL::vector_f32 (AVX_prtn): Both vectors need to be of same length.");
+#endif
+
+            constexpr unsigned short batch_size = 4; // 128 / 32 = 4
+            std::size_t simd_range = std::intmax_t(a.size()) - batch_size;
+
+#pragma omp parallel for
+            for (std::intmax_t i = 0; i <= simd_range; i += batch_size)
+            {
+                __m128 vb = _mm_load_ps(&b[i]);
+                __m128 vc = _mm_load_ps(&c[i]);
+                __m128 va = f(vb, vc);
+                _mm_store_ps(&a[i], va);
+            }
+
+#pragma omp parallel for
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
+                a[i] = fs(b[i], c[i]);
+        }
+        #endif
 
     public:
-        using vector_vanilla<float>::vector_vanilla;    
+        using vector_vanilla<float>::vector_vanilla;
 
-        void operator+= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, add); }
-        void operator-= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, sub); }
-        void operator*= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, mul); }
-        void operator/= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, div); }
+        #ifdef __AVX2__
+        void operator+= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, add, add); }
+        void operator-= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, sub, sub); }
+        void operator*= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, mul, mul); }
+        void operator/= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, div, div); }
+        #elif defined(__AVX__)
+        void operator+= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, add, add); }
+        void operator-= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, sub, sub); }
+        void operator*= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, mul, mul); }
+        void operator/= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, div, div); }
+        #endif
 
+        #ifdef __AVX2__
         vector_f32 operator+ (const vector_f32& vec)
         {
             vector_f32 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, add);
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, add, add);
             return tmp;
         }
         vector_f32 operator- (const vector_f32& vec)
         {
             vector_f32 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, sub);
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, sub, sub);
             return tmp;
         }
         vector_f32 operator* (const vector_f32& vec)
         {
             vector_f32 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, mul);
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, mul, mul);
             return tmp;
         }
         vector_f32 operator/ (const vector_f32& vec)
         {
             vector_f32 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, div);
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, div, div);
             return tmp;
         }
+        #elif defined(__AVX__)
+        vector_f32 operator+ (const vector_f32& vec)
+        {
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, add, add);
+            return tmp;
+        }
+        vector_f32 operator- (const vector_f32& vec)
+        {
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, sub, sub);
+            return tmp;
+        }
+        vector_f32 operator* (const vector_f32& vec)
+        {
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, mul, mul);
+            return tmp;
+        }
+        vector_f32 operator/ (const vector_f32& vec)
+        {
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, div, div);
+            return tmp;
+        }
+        #endif
     };
 
     class vector_i8 : public vector_vanilla<int8_t>
