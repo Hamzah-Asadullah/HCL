@@ -11,6 +11,12 @@
 #ifndef VECTOR_CPP
 #define VECTOR_CPP
 
+/*
+  TODO
+
+  - Add scalar fallback if neither AVX nor AVX256 is found on: f32, i8
+*/
+
 namespace HCL
 {
     template <typename T>
@@ -153,8 +159,7 @@ namespace HCL
             for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
                 a[i] = fs(b[i], c[i]);
         }
-        #else
-        #ifdef __AVX__
+        #elif defined(__AVX__)
         static __m128d add(const __m128d& a, const __m128d& b) { return _mm_add_pd(a, b); }
         static __m128d sub(const __m128d& a, const __m128d& b) { return _mm_sub_pd(a, b); }
         static __m128d mul(const __m128d& a, const __m128d& b) { return _mm_mul_pd(a, b); }
@@ -188,7 +193,6 @@ namespace HCL
                 a[i] = fs(b[i], c[i]);
         }
         #endif
-        #endif
 
     public:
         using vector_vanilla<double>::vector_vanilla;    
@@ -198,8 +202,7 @@ namespace HCL
         void operator-= (const vector_f64& vec) { AVX2_prtn(*this, *this, vec, sub, sub); }
         void operator*= (const vector_f64& vec) { AVX2_prtn(*this, *this, vec, mul, mul); }
         void operator/= (const vector_f64& vec) { AVX2_prtn(*this, *this, vec, div, div); }
-        #else
-        #ifdef __AVX__
+        #elif defined(__AVX__)
         void operator+= (const vector_f64& vec) { AVX_prtn(*this, *this, vec, add, add); }
         void operator-= (const vector_f64& vec) { AVX_prtn(*this, *this, vec, sub, sub); }
         void operator*= (const vector_f64& vec) { AVX_prtn(*this, *this, vec, mul, mul); }
@@ -213,7 +216,6 @@ namespace HCL
         { for (std::size_t i = 0; i < vec.size(); ++i) (*this)[i] *= vec[i]; }
         void operator/= (const vector_f64& vec)
         { for (std::size_t i = 0; i < vec.size(); ++i) (*this)[i] /= vec[i]; }
-        #endif
         #endif
 
         #ifdef __AVX2__
