@@ -12,7 +12,7 @@ This is done by a very minimal and simple concept:
 - Standard classes natively included in HCL, like `vector_f32` (float array) and `vector_f64` (double array) derive from this base class.
 - This allows for easy optimization for each type (i8, f32, f64) using both multi-threading (native's use OMP) and secure use of AVX2.
 
-As of _10/05/2025_, following containers are native in HCL:
+As of _14/05/2025_, following containers are native in HCL:
 
 - `vector_vanilla<T>`: The base class from which all other types derive
 - `vector_f64` and `vector_f32`: `double` and `float` containers optimized using AVX256 and OMP
