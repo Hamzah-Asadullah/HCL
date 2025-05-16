@@ -11,12 +11,6 @@
 #ifndef VECTOR_CPP
 #define VECTOR_CPP
 
-/*
-  TODO
-
-  - Add scalar fallback if neither AVX nor AVX256 is found on: f32, i8
-*/
-
 namespace HCL
 {
     template <typename T>
@@ -43,12 +37,7 @@ namespace HCL
                 setX(T(0));
                 return n_elems;
             }
-            else
-            {
-                _free();
-                if (elems == 0)
-                    return n_elems;
-            }
+            else _free();
 
             std::size_t block_size = std::max(sizeof(T) * 8, alignof(std::max_align_t));
             #ifdef __AVX2__
@@ -209,94 +198,118 @@ namespace HCL
         void operator/= (const vector_f64& vec) { AVX_prtn(*this, *this, vec, div, div); }
         #else
         void operator+= (const vector_f64& vec)
-        { for (std::size_t i = 0; i < vec.size(); ++i) (*this)[i] += vec[i]; }
+        {
+#pragma omp parallel for
+            for (std::size_t i = 0; i < vec.size(); ++i)
+                (*this)[i] += vec[i];
+        }
         void operator-= (const vector_f64& vec)
-        { for (std::size_t i = 0; i < vec.size(); ++i) (*this)[i] -= vec[i]; }
+        {
+#pragma omp parallel for
+            for (std::size_t i = 0; i < vec.size(); ++i)
+                (*this)[i] -= vec[i];
+        }
         void operator*= (const vector_f64& vec)
-        { for (std::size_t i = 0; i < vec.size(); ++i) (*this)[i] *= vec[i]; }
+        {
+#pragma omp parallel for
+            for (std::size_t i = 0; i < vec.size(); ++i)
+                (*this)[i] *= vec[i];
+        }
         void operator/= (const vector_f64& vec)
-        { for (std::size_t i = 0; i < vec.size(); ++i) (*this)[i] /= vec[i]; }
+        {
+#pragma omp parallel for
+            for (std::size_t i = 0; i < vec.size(); ++i)
+                (*this)[i] /= vec[i];
+        }
         #endif
 
         #ifdef __AVX2__
-            vector_f64 operator+ (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
-                if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, add, add);
-                return tmp;
-            }
-            vector_f64 operator- (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
-                if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, sub, sub);
-                return tmp;
-            }
-            vector_f64 operator* (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
-                if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, mul, mul);
-                return tmp;
-            }
-            vector_f64 operator/ (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
-                if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, div, div);
-                return tmp;
-            }
+        vector_f64 operator+ (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, add, add);
+            return tmp;
+        }
+        vector_f64 operator- (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, sub, sub);
+            return tmp;
+        }
+        vector_f64 operator* (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, mul, mul);
+            return tmp;
+        }
+        vector_f64 operator/ (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, div, div);
+            return tmp;
+        }
         #elif defined(__AVX__)
-            vector_f64 operator+ (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
-                if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, add, add);
-                return tmp;
-            }
-            vector_f64 operator- (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
-                if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, sub, sub);
-                return tmp;
-            }
-            vector_f64 operator* (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
-                if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, mul, mul);
-                return tmp;
-            }
-            vector_f64 operator/ (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
-                if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, div, div);
-                return tmp;
-            }
+        vector_f64 operator+ (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, add, add);
+            return tmp;
+        }
+        vector_f64 operator- (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, sub, sub);
+            return tmp;
+        }
+        vector_f64 operator* (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, mul, mul);
+            return tmp;
+        }
+        vector_f64 operator/ (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, div, div);
+            return tmp;
+        }
         #else
-            vector_f64 operator+ (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
+        vector_f64 operator+ (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (vec.data() != nullptr)
+#pragma omp parallel for
                 for (std::size_t i = 0; i < tmp.size(); ++i)
                     tmp[i] = (*this)[i] + vec[i];
-                return tmp;
-            }
-            vector_f64 operator- (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
+            return tmp;
+        }
+        vector_f64 operator- (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (vec.data() != nullptr)
+#pragma omp parallel for
                 for (std::size_t i = 0; i < tmp.size(); ++i)
                     tmp[i] = (*this)[i] - vec[i];
-                return tmp;
-            }
-            vector_f64 operator* (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
+            return tmp;
+        }
+        vector_f64 operator* (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (vec.data() != nullptr)
+#pragma omp parallel for
                 for (std::size_t i = 0; i < tmp.size(); ++i)
                     tmp[i] = (*this)[i] * vec[i];
-                return tmp;
-            }
-            vector_f64 operator/ (const vector_f64& vec)
-            {
-                vector_f64 tmp(size());
+            return tmp;
+        }
+        vector_f64 operator/ (const vector_f64& vec)
+        {
+            vector_f64 tmp(size());
+            if (vec.data() != nullptr)
+#pragma omp parallel for
                 for (std::size_t i = 0; i < tmp.size(); ++i)
                     tmp[i] = (*this)[i] / vec[i];
-                return tmp;
-            }
+            return tmp;
+        }
         #endif
     };
 
@@ -391,6 +404,31 @@ namespace HCL
         void operator-= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, sub, sub); }
         void operator*= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, mul, mul); }
         void operator/= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, div, div); }
+        #else
+        void operator+= (const vector_f32& vec)
+        {
+#pragma omp parallel for
+            for (std::size_t i = 0; i < vec.size(); ++i)
+                (*this)[i] += vec[i];
+        }
+        void operator-= (const vector_f32& vec)
+        {
+#pragma omp parallel for
+            for (std::size_t i = 0; i < vec.size(); ++i)
+                (*this)[i] -= vec[i];
+        }
+        void operator*= (const vector_f32& vec)
+        {
+#pragma omp parallel for
+            for (std::size_t i = 0; i < vec.size(); ++i)
+                (*this)[i] *= vec[i];
+        }
+        void operator/= (const vector_f32& vec)
+        {
+#pragma omp parallel for
+            for (std::size_t i = 0; i < vec.size(); ++i)
+                (*this)[i] /= vec[i];
+        }
         #endif
 
         #ifdef __AVX2__
@@ -441,6 +479,43 @@ namespace HCL
         {
             vector_f32 tmp(size());
             if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, div, div);
+            return tmp;
+        }
+        #else
+        vector_f32 operator+ (const vector_f32& vec)
+        {
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr)
+#pragma omp parallel for
+                for (std::size_t i = 0; i < tmp.size(); ++i)
+                    tmp[i] = (*this)[i] + vec[i];
+            return tmp;
+        }
+        vector_f32 operator- (const vector_f32& vec)
+        {
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr)
+#pragma omp parallel for
+                for (std::size_t i = 0; i < tmp.size(); ++i)
+                    tmp[i] = (*this)[i] - vec[i];
+            return tmp;
+        }
+        vector_f32 operator* (const vector_f32& vec)
+        {
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr)
+#pragma omp parallel for
+                for (std::size_t i = 0; i < tmp.size(); ++i)
+                    tmp[i] = (*this)[i] * vec[i];
+            return tmp;
+        }
+        vector_f32 operator/ (const vector_f32& vec)
+        {
+            vector_f32 tmp(size());
+            if (tmp.data() != nullptr)
+#pragma omp parallel for
+                for (std::size_t i = 0; i < tmp.size(); ++i)
+                    tmp[i] = (*this)[i] / vec[i];
             return tmp;
         }
         #endif
@@ -527,18 +602,31 @@ namespace HCL
         #elif defined(__AVX__)
         void operator+= (const vector_i8& vec) { AVX_prtn(*this, *this, vec, add, add); }
         void operator-= (const vector_i8& vec) { AVX_prtn(*this, *this, vec, sub, sub); }
+        #else
+        void operator+= (const vector_i8& vec)
+        {
+#pragma omp parallel for
+            for (std::size_t i = 0; i < vec.size(); ++i)
+                (*this)[i] *= vec[i];
+        }
+        void operator-= (const vector_i8& vec)
+        {
+#pragma omp parallel for
+            for (std::size_t i = 0; i < vec.size(); ++i)
+                (*this)[i] /= vec[i];
+        }
         #endif
 
         void operator*= (const vector_i8& vec)
         {
 #pragma omp parallel for
-            for (std::intmax_t i = 0; i < std::intmax_t(vec.size()); ++i)
+            for (std::size_t i = 0; i < vec.size(); ++i)
                 (*this)[i] *= vec[i];
         }
         void operator/= (const vector_i8& vec)
         {
 #pragma omp parallel for
-            for (std::intmax_t i = 0; i < std::intmax_t(vec.size()); ++i)
+            for (std::size_t i = 0; i < vec.size(); ++i)
                 (*this)[i] /= vec[i];
         }
 
@@ -566,6 +654,25 @@ namespace HCL
         {
             vector_i8 tmp(size());
             if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, sub, sub);
+            return tmp;
+        }
+        #else
+        vector_i8 operator+ (const vector_i8& vec)
+        {
+            vector_i8 tmp(size());
+            if (tmp.data() != nullptr)
+#pragma omp parallel for
+                for (std::size_t i = 0; i < vec.size(); ++i)
+                    tmp[i] = (*this)[i] + vec[i];
+            return tmp;
+        }
+        vector_i8 operator- (const vector_i8& vec)
+        {
+            vector_i8 tmp(size());
+            if (tmp.data() != nullptr)
+#pragma omp parallel for
+                for (std::size_t i = 0; i < vec.size(); ++i)
+                    tmp[i] = (*this)[i] - vec[i];
             return tmp;
         }
         #endif
