@@ -2,9 +2,9 @@
 
 HCL, short for `Hamzah's Computing Library` is a simple headers-only library which allows for different kind of optimizations, including:
 
-- The use of SIMD, including AVX, AVX2, AVX512, SSE, and other
-- The use of multiple threads
-- The use of GPUs by manually overloading using drivers like Vulkan, CUDA, and other
+- The use of AVX, AVX2
+- The use of multiple threads using OpemMP
+- And soon, GPU by using the Open Computing Language (OpenCL)
 
 This is done by a very minimal and simple concept:  
 
@@ -12,7 +12,8 @@ This is done by a very minimal and simple concept:
 - Standard classes natively included in HCL, like `vector_f32` (float array) and `vector_f64` (double array) derive from this base class.
 - This allows for easy optimization for each type (i8, f32, f64) using both multi-threading (native's use OMP) and secure use of AVX2.
 
-As of _14/05/2025_, following containers are native in HCL:
+All types are defined in the `./HCL/vector.cpp` file, and I'm building on `./HCL/matrix.cpp`.  
+As of _16/05/2025_, following containers are native in HCL:
 
 - `vector_vanilla<T>`: The base class from which all other types derive
 - `vector_f64` and `vector_f32`: `double` and `float` containers optimized using AVX256 and OMP
