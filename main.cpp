@@ -6,7 +6,7 @@
 #undef DEBUG
 #endif
 
-#include "./HCL/vector.cpp"
+#include "./HCL/vector/vector_i8.cpp"
 
 #ifdef _WIN32 // For UTF
 #include <windows.h>
@@ -24,12 +24,10 @@ int main()
 
     #ifdef __AVX2__
     std::cout << ">> AVX2 found, will most likely not crash.\n";
-    #else
-    #ifdef __AVX__
+    #elif defined(__AVX__)
     std::cout << ">> AVX found, will most likely not crash.\n";
     #else
     std::cout << ">> Both AVX2 and AVX missing; falling back to scalar. Will be \"slow\".\n";
-    #endif
     #endif
 
     std::size_t elems = 0; // If that's 0 it'll prompt
@@ -91,8 +89,8 @@ int main()
 
     std::cout
         << "\r>> "
-        << duration_cast<seconds>(end - start).count()
-        << "s.: Finished final on " << vectors << " vectors, each "
+        << duration_cast<milliseconds>(end - start).count()
+        << "ms.: Finished final on " << vectors << " vectors, each "
         << ((elems * bytes) / 1024.f) / 1024.f
         << "MB \U0001F618\n";
 
