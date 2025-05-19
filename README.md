@@ -3,7 +3,7 @@
 HCL, short for `Hamzah's Computing Library` is a simple headers-only library which allows for different kind of optimizations, including:
 
 - The use of AVX, AVX2
-- The use of multiple threads using OpemMP
+- The use of multiple threads using OpenMP
 - And soon, GPU by using the Open Computing Language (OpenCL)
 
 This is done by a very minimal and simple concept:  
