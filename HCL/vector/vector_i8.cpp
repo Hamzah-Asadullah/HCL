@@ -110,9 +110,21 @@ namespace HCL
         void operator+= (const vector_i8& vec) { do_scalar(*this, vec, add); }
         void operator-= (const vector_i8& vec) { do_scalar(*this, vec, sub); }
         #endif
-
         void operator*= (const vector_i8& vec) { do_scalar(*this, vec, mul); }
         void operator/= (const vector_i8& vec) { do_scalar(*this, vec, div); }
+
+        #ifdef __AVX2__
+        void sum(const vector_i8& a, const vector_i8& b) { AVX2_prtn(*this, a, b, add, add); }
+        void dif(const vector_i8& a, const vector_i8& b) { AVX2_prtn(*this, a, b, sub, sub); }
+        #elif defined(__AVX__)
+        void sum(const vector_i8& a, const vector_i8& b) { AVX_prtn(*this, a, b, add, add); }
+        void dif(const vector_i8& a, const vector_i8& b) { AVX_prtn(*this, a, b, sub, sub); }
+        #else
+        void sum(const vector_i8& a, const vector_i8& b) { do_scalar(a, b, add); }
+        void dif(const vector_i8& a, const vector_i8& b) { do_scalar(a, b, sub); }
+        #endif
+        void pro(const vector_i8& a, const vector_i8& b) { do_scalar(a, b, mul); }
+        void quo(const vector_i8& a, const vector_i8& b) { do_scalar(a, b, div); }
 
         #ifdef __AVX2__
         vector_i8 operator+ (const vector_i8& vec)

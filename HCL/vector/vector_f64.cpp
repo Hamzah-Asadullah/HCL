@@ -122,6 +122,23 @@ namespace HCL
         #endif
 
         #ifdef __AVX2__
+        void sum(const vector_f64& a, const vector_f64& b) { AVX2_prtn(*this, a, b, add, add); }
+        void dif(const vector_f64& a, const vector_f64& b) { AVX2_prtn(*this, a, b, sub, sub); }
+        void pro(const vector_f64& a, const vector_f64& b) { AVX2_prtn(*this, a, b, mul, mul); }
+        void quo(const vector_f64& a, const vector_f64& b) { AVX2_prtn(*this, a, b, div, div); }
+        #elif defined(__AVX__)
+        void sum(const vector_f64& a, const vector_f64& b) { AVX_prtn(*this, a, b, add, add); }
+        void dif(const vector_f64& a, const vector_f64& b) { AVX_prtn(*this, a, b, sub, sub); }
+        void pro(const vector_f64& a, const vector_f64& b) { AVX_prtn(*this, a, b, mul, mul); }
+        void quo(const vector_f64& a, const vector_f64& b) { AVX_prtn(*this, a, b, div, div); }
+        #else
+        void sum(const vector_f64& a, const vector_f64& b) { do_scalar(a, b, add); }
+        void dif(const vector_f64& a, const vector_f64& b) { do_scalar(a, b, sub); }
+        void pro(const vector_f64& a, const vector_f64& b) { do_scalar(a, b, mul); }
+        void quo(const vector_f64& a, const vector_f64& b) { do_scalar(a, b, div); }
+        #endif
+
+        #ifdef __AVX2__
         vector_f64 operator+ (const vector_f64& vec)
         {
             vector_f64 tmp(size());

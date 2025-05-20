@@ -30,7 +30,7 @@ namespace HCL
             vector_f32 a(b.size());
             if (a.data() != nullptr)
                 a.do_scalar(b, c, fs);
-            return a;    
+            return a;
         }
 
         #ifdef __AVX2__
@@ -38,7 +38,7 @@ namespace HCL
         static __m256 sub(const __m256& a, const __m256& b) { return _mm256_sub_ps(a, b); }
         static __m256 mul(const __m256& a, const __m256& b) { return _mm256_mul_ps(a, b); }
         static __m256 div(const __m256& a, const __m256& b) { return _mm256_div_ps(a, b); }
-    
+
         void AVX2_prtn
         (
             vector_f32& a, const vector_f32& b, const vector_f32& c,
@@ -117,10 +117,27 @@ namespace HCL
         void operator*= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, mul, mul); }
         void operator/= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, div, div); }
         #else
-        void operator+= (const vectir_f32& vec) { do_scalar(*this, *this, vec, add); }
-        void operator-= (const vectir_f32& vec) { do_scalar(*this, *this, vec, sub); }
-        void operator*= (const vectir_f32& vec) { do_scalar(*this, *this, vec, mul); }
-        void operator/= (const vectir_f32& vec) { do_scalar(*this, *this, vec, div); }
+        void operator+= (const vectir_f32& vec) { do_scalar(*this, vec, add); }
+        void operator-= (const vectir_f32& vec) { do_scalar(*this, vec, sub); }
+        void operator*= (const vectir_f32& vec) { do_scalar(*this, vec, mul); }
+        void operator/= (const vectir_f32& vec) { do_scalar(*this, vec, div); }
+        #endif
+
+        #ifdef __AVX2__
+        void sum(const vector_f32& a, const vector_f32& b) { AVX2_prtn(*this, a, b, add, add); }
+        void dif(const vector_f32& a, const vector_f32& b) { AVX2_prtn(*this, a, b, sub, sub); }
+        void pro(const vector_f32& a, const vector_f32& b) { AVX2_prtn(*this, a, b, mul, mul); }
+        void quo(const vector_f32& a, const vector_f32& b) { AVX2_prtn(*this, a, b, div, div); }
+        #elif defined(__AVX__)
+        void sum(const vector_f32& a, const vector_f32& b) { AVX_prtn(*this, a, b, add, add); }
+        void dif(const vector_f32& a, const vector_f32& b) { AVX_prtn(*this, a, b, sub, sub); }
+        void pro(const vector_f32& a, const vector_f32& b) { AVX_prtn(*this, a, b, mul, mul); }
+        void quo(const vector_f32& a, const vector_f32& b) { AVX_prtn(*this, a, b, div, div); }
+        #else
+        void sum(const vector_f32& a, const vector_f32& b) { do_scalar(a, b, add); }
+        void dif(const vector_f32& a, const vector_f32& b) { do_scalar(a, b, sub); }
+        void pro(const vector_f32& a, const vector_f32& b) { do_scalar(a, b, mul); }
+        void quo(const vector_f32& a, const vector_f32& b) { do_scalar(a, b, div); }
         #endif
 
         #ifdef __AVX2__
