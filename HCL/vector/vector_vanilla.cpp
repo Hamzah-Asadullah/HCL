@@ -17,7 +17,7 @@ namespace HCL
     {
     private:
         T* mem = nullptr;
-        std::size_t n_elems;
+        std::size_t n_elems = 0;
 
     public:
         bool is_column = true;
@@ -63,15 +63,37 @@ namespace HCL
                 mem[i] = fn(mem[i]);
         }
 
-        void do_scalar
-        (
-            const vector_vanilla<T>& b, const vector_vanilla<T>& c,
-            T (*fs) (const T&, const T&)
-        )
+        void do_scalar(const vector_vanilla<T>& b, const vector_vanilla<T>& c, T (*fs) (const T&, const T&))
         {
+#ifdef DEBUG
+            if ((b.size() != c.size()) || (n_elems != c.size()))
+                throw std::runtime_error("HCL::vector_vanilla `void do_scalar(...)`: Vectors a, b and c have to be of same size.");
+#endif
 #pragma omp parallel for
             for (std::size_t i = 0; i < n_elems; ++i)
                 mem[i] = fs(b[i], c[i]);
+        }
+
+        void do_scalar(const vector_vanilla<T>& b, const T& c, T (*fs) (const T&, const T&))
+        {
+#ifdef DEBUG
+            if (b.size() != c.size())
+                throw std::runtime_error("HCL::vector_vanilla `void do_scalar(...)`: Vectors a and b have to be of same size.");
+#endif
+#pragma omp parallel for
+            for (std::size_t i = 0; i < n_elems; ++i)
+                mem[i] = fs(b[i], c);
+        }
+
+        void do_scalar(const T& b, const vector_vanilla<T>& c, T (*fs) (const T&, const T&))
+        {
+#ifdef DEBUG
+            if (b.size() != c.size())
+                throw std::runtime_error("HCL::vector_vanilla `void do_scalar(...)`: Vectors a and b have to be of same size.");
+#endif
+#pragma omp parallel for
+            for (std::size_t i = 0; i < n_elems; ++i)
+                mem[i] = fs(b, c[i]);
         }
 
         void _free()

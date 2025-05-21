@@ -2,20 +2,19 @@
 #include <chrono>
 #include <string>
 
-#ifdef DEBUG
-#undef DEBUG
-#endif
-
-#include "./HCL/vector/vector_i8.cpp"
+#include "./HCL/vector/vector_f64.cpp"
 
 #ifdef _WIN32 // For UTF
 #include <windows.h>
 #endif
 
-#define TYPE int8_t
-#define VECTORS 3
+#define TYPE double
 
 using namespace std::chrono;
+
+// Test for HCL
+// Test new features implemented in latest release
+// For this release: test all new vec * scalar overloads
 
 int main()
 {
@@ -45,7 +44,7 @@ int main()
             elems = std::max
             (
                 std::size_t(1),
-                std::size_t(((std::stoull(tmp) * 1024 * 1024) / bytes) / VECTORS)
+                std::size_t((std::stoull(tmp) * 1024 * 1024) / bytes)
             );
             std::cout << ">> Set to " << elems << " numbers per vector.\n";
         }
@@ -68,30 +67,34 @@ int main()
     }
     while (!thread_set);
 
-    HCL::vector_i8 vec[VECTORS];
-#pragma omp parallel for
-    for (std::size_t v = 0; v < VECTORS; ++v)
-    {
-        if (vec[v].resize(elems) == 0)
-            std::cout << "Failed to allocate memory for vector " << v + 1 << ", expect a crash.\n";
-        vec[v].setX(5);
-    }
+    HCL::vector_f64 vec(elems);
 
     // On GCC / G++ / MinGW, it'll most likely always return a thread count of 1. Can't do anything about it.
-    std::cout << ">> Starting calculations using " << omp_get_num_threads() << " threads managed by OMP.";
+    std::cout << ">> Starting calculations using " << omp_get_num_threads() << " threads managed by OMP.\n";
     time_point start = high_resolution_clock::now(), end = start;
-    vec[0].sum(vec[1], vec[2]);
-    vec[0].dif(vec[1], vec[2]);
-    vec[0].pro(vec[1], vec[2]);
-    vec[0].quo(vec[1], vec[2]);
+    vec += TYPE(15);
+    vec -= TYPE(5);
+    vec *= TYPE(3);
+    vec /= TYPE(2);
+
+    vec.sum(vec, TYPE(15));
+    vec.dif(vec, TYPE(5));
+    vec.pro(vec, TYPE(3));
+    vec.quo(vec, TYPE(2));
+
+    vec.dif(TYPE(10), vec);
+    vec.quo(TYPE(10), vec);
+
+    vec = vec + TYPE(15);
+    vec = vec - TYPE(5);
+    vec = vec * TYPE(3);
+    vec = vec / TYPE(2);
     end = high_resolution_clock::now();
 
     std::cout
-        << "\r>> "
+        << "\r>> Took "
         << duration_cast<milliseconds>(end - start).count()
-        << "ms.: Finished final on " << VECTORS << " vectors, each "
-        << ((elems * bytes) / 1024.f) / 1024.f
-        << "MB \U0001F618\n";
+        << "ms \U0001F618 (n0 = " << vec[0] << ")\n";
 
     return 0;
 }
