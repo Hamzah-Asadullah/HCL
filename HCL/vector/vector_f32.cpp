@@ -1,6 +1,4 @@
 #include <immintrin.h>
-#include <algorithm>
-#include <iostream>
 #include <cstdlib>
 #include <cstdint>
 #include <stdexcept>
@@ -47,12 +45,12 @@ namespace HCL
         )
         {
 #ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f32 (AVX2_prtn): Both vectors need to be of same length.");
+            if ((b.size() != c.size()) || (b.size() != a.size()))
+                throw std::runtime_error("HCL::vector_f32 (AVX2_prtn): Both vectors need to be of same size.");
 #endif
 
             constexpr unsigned short batch_size = 8; // 256 / 32 = 8
-            std::size_t simd_range = std::intmax_t(a.size()) - batch_size;
+            std::intmax_t simd_range = std::intmax_t(a.size()) - batch_size;
 
 #pragma omp parallel for
             for (std::intmax_t i = 0; i <= simd_range; i += batch_size)
@@ -64,7 +62,7 @@ namespace HCL
             }
 
 #pragma omp parallel for
-            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
+            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
                 a[i] = fs(b[i], c[i]);
         }
         #elif defined(__AVX__)
@@ -81,12 +79,12 @@ namespace HCL
         )
         {
 #ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f32 (AVX_prtn): Both vectors need to be of same length.");
+            if ((b.size() != c.size()) || (b.size() != a.size()))
+                throw std::runtime_error("HCL::vector_f32 (AVX_prtn): Both vectors need to be of same size.");
 #endif
 
             constexpr unsigned short batch_size = 4; // 128 / 32 = 4
-            std::size_t simd_range = std::intmax_t(a.size()) - batch_size;
+            std::intmax_t simd_range = std::intmax_t(a.size()) - batch_size;
 
 #pragma omp parallel for
             for (std::intmax_t i = 0; i <= simd_range; i += batch_size)
@@ -98,7 +96,7 @@ namespace HCL
             }
 
 #pragma omp parallel for
-            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
+            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
                 a[i] = fs(b[i], c[i]);
         }
         #endif
@@ -138,6 +136,10 @@ namespace HCL
         void dif(const vector_f32& a, const vector_f32& b) { do_scalar(a, b, sub); }
         void pro(const vector_f32& a, const vector_f32& b) { do_scalar(a, b, mul); }
         void quo(const vector_f32& a, const vector_f32& b) { do_scalar(a, b, div); }
+        void sum(const vector_f32& a, const float& x) { do_scalar(a, x, add); }
+        void dif(const vector_f32& a, const float& x) { do_scalar(a, x, sub); }
+        void pro(const vector_f32& a, const float& x) { do_scalar(a, x, mul); }
+        void quo(const vector_f32& a, const float& x) { do_scalar(a, x, div); }
         #endif
 
         #ifdef __AVX2__

@@ -67,7 +67,7 @@ namespace HCL
         {
 #ifdef DEBUG
             if ((b.size() != c.size()) || (n_elems != c.size()))
-                throw std::runtime_error("HCL::vector_vanilla `void do_scalar(...)`: Vectors a, b and c have to be of same size.");
+                throw std::runtime_error("HCL::vector_vanilla (do_scalar): Vectors a, b and c have to be of same size.");
 #endif
 #pragma omp parallel for
             for (std::size_t i = 0; i < n_elems; ++i)
@@ -78,7 +78,7 @@ namespace HCL
         {
 #ifdef DEBUG
             if (b.size() != c.size())
-                throw std::runtime_error("HCL::vector_vanilla `void do_scalar(...)`: Vectors a and b have to be of same size.");
+                throw std::runtime_error("HCL::vector_vanilla (do_scalar): Vectors a and b have to be of same size.");
 #endif
 #pragma omp parallel for
             for (std::size_t i = 0; i < n_elems; ++i)
@@ -89,7 +89,7 @@ namespace HCL
         {
 #ifdef DEBUG
             if (b.size() != c.size())
-                throw std::runtime_error("HCL::vector_vanilla `void do_scalar(...)`: Vectors a and b have to be of same size.");
+                throw std::runtime_error("HCL::vector_vanilla (do_scalar): Vectors a and b have to be of same size.");
 #endif
 #pragma omp parallel for
             for (std::size_t i = 0; i < n_elems; ++i)

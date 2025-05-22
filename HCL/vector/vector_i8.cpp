@@ -1,6 +1,4 @@
 #include <immintrin.h>
-#include <algorithm>
-#include <iostream>
 #include <cstdlib>
 #include <cstdint>
 #include <stdexcept>
@@ -45,8 +43,8 @@ namespace HCL
         )
         {
 #ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_i8 (AVX2_prtn): Both vectors need to be of same length.");
+            if ((b.size() != c.size()) || (b.size() != a.size()))
+                throw std::runtime_error("HCL::vector_i8 (AVX2_prtn): Both vectors need to be of same size.");
 #endif
             constexpr unsigned short batch_size = 32;
             std::intmax_t simd_range = std::intmax_t(a.size()) - batch_size;
@@ -61,7 +59,7 @@ namespace HCL
             }
 
 #pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
                 a[i] = fs(b[i], c[i]);
         }
         #elif defined(__AVX__)
@@ -76,8 +74,8 @@ namespace HCL
         )
         {
 #ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_i8 (AVX_prtn): Both vectors need to be of same length.");
+            if ((b.size() != c.size()) || (b.size() != a.size()))
+                throw std::runtime_error("HCL::vector_i8 (AVX_prtn): Both vectors need to be of same size.");
 #endif
             constexpr unsigned short batch_size = 16;
             std::intmax_t simd_range = std::intmax_t(a.size()) - batch_size;

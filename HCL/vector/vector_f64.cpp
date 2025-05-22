@@ -49,8 +49,8 @@ namespace HCL
         )
         {
 #ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f64 (AVX2_prtn): Both vectors need to be of same length.");
+            if ((b.size() != c.size()) || (b.size() != a.size()))
+                throw std::runtime_error("HCL::vector_f64 (AVX2_prtn): Both vectors need to be of same size.");
 #endif
             constexpr unsigned short batch_size = 4; // 256 / 64 = 4
             std::intmax_t simd_range = std::intmax_t(a.size()) - batch_size;
@@ -77,8 +77,8 @@ namespace HCL
         )
         {
 #ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f64 (AVX2_prtn): Both vectors need to be of same length.");
+            if ((b.size() != c.size()) || (b.size() != a.size()))
+                throw std::runtime_error("HCL::vector_f64 (AVX2_prtn): Both vectors need to be of same size.");
 #endif
             constexpr unsigned short batch_size = 4; // 256 / 64 = 4
             std::intmax_t simd_range = std::intmax_t(a.size()) - batch_size;
@@ -105,8 +105,8 @@ namespace HCL
         )
         {
 #ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f64 (AVX2_prtn): Both vectors need to be of same length.");
+            if ((b.size() != c.size()) || (b.size() != a.size()))
+                throw std::runtime_error("HCL::vector_f64 (AVX2_prtn): Both vectors need to be of same size.");
 #endif
             constexpr unsigned short batch_size = 4; // 256 / 64 = 4
             std::intmax_t simd_range = std::intmax_t(a.size()) - batch_size;
@@ -124,6 +124,19 @@ namespace HCL
             for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
                 a[i] = fs(b, c[i]);
         }
+
+        template <typename T>
+        vector_f64 do_AVX2_create(const vector_f64& b, const T& c, __m256d (*f) (const __m256d&, const __m256d&), double (*fs) (const double&, const double&))
+        {
+#ifdef DEBUG
+            if ((b.size() != size()) || (c.size() != size()))
+                throw std::runtime_error("HCL::vector_f64 (do_AVX2_create): Both vectors need to be of same size.");
+#endif
+            vector_f64 a(size());
+            if (a.size())
+                AVX2_prtn(a, b, c, f, fs);
+            return a;
+        }
         #elif defined(__AVX__)
         static __m128d add(const __m128d& a, const __m128d& b) { return _mm_add_pd(a, b); }
         static __m128d sub(const __m128d& a, const __m128d& b) { return _mm_sub_pd(a, b); }
@@ -138,8 +151,8 @@ namespace HCL
         )
         {
 #ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f64 (AVX_prtn): Both vectors need to be of same length.");
+            if ((b.size() != c.size()) || (b.size() != a.size()))
+                throw std::runtime_error("HCL::vector_f64 (AVX_prtn): Both vectors need to be of same size.");
 #endif
             constexpr unsigned short batch_size = 2; // 128 / 64 = 4
             std::intmax_t simd_range = std::intmax_t(a.size()) - batch_size;
@@ -166,8 +179,8 @@ namespace HCL
         )
         {
 #ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f64 (AVX_prtn): Both vectors need to be of same length.");
+            if ((b.size() != c.size()) || (b.size() != a.size()))
+                throw std::runtime_error("HCL::vector_f64 (AVX_prtn): Both vectors need to be of same size.");
 #endif
             constexpr unsigned short batch_size = 2; // 128 / 64 = 4
             std::intmax_t simd_range = std::intmax_t(a.size()) - batch_size;
@@ -176,7 +189,7 @@ namespace HCL
             for (std::intmax_t i = 0; i <= simd_range; i += batch_size)
             {
                 __m128d vb = _mm_load_pd(&b[i]);
-                __m128d vc = _mm_broadcast_sd(&c);
+                __m128d vc = _mm_set1_pd(c);
                 __m128d va = f(vb, vc);
                 _mm_store_pd(&a[i], va);
             }
@@ -194,8 +207,8 @@ namespace HCL
         )
         {
 #ifdef DEBUG
-            if ((b.n_elems != c.n_elems) || (b.n_elems != a.n_elems))
-                throw std::runtime_error("HCL::vector_f64 (AVX_prtn): Both vectors need to be of same length.");
+            if ((b.size() != c.size()) || (b.size() != a.size()))
+                throw std::runtime_error("HCL::vector_f64 (AVX_prtn): Both vectors need to be of same size.");
 #endif
             constexpr unsigned short batch_size = 2; // 128 / 64 = 4
             std::intmax_t simd_range = std::intmax_t(a.size()) - batch_size;
@@ -203,7 +216,7 @@ namespace HCL
 #pragma omp parallel for
             for (std::intmax_t i = 0; i <= simd_range; i += batch_size)
             {
-                __m128d vb = _mm_broadcast_sd(&b);
+                __m128d vb = _mm_set1_pd(b);
                 __m128d vc = _mm_load_pd(&c[i]);
                 __m128d va = f(vb, vc);
                 _mm_store_pd(&a[i], va);
@@ -212,6 +225,19 @@ namespace HCL
 #pragma omp parallel for
             for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
                 a[i] = fs(b, c[i]);
+        }
+
+        template <typename T>
+        vector_f64 do_AVX_create(const vector_f64& b, const T& c, __m128d (*f) (const __m128d&, const __m128d&), double (*fs) (const double&, const double&))
+        {
+#ifdef DEBUG
+            if ((b.size() != size()) || (c.size() != size()))
+                throw std::runtime_error("HCL::vector_f64 (do_AVX_create): Both vectors need to be of same size.");
+#endif
+            vector_f64 a(size());
+            if (a.size())
+                AVX_prtn(a, b, c, f, fs);
+            return a;
         }
         #endif
 
@@ -283,105 +309,24 @@ namespace HCL
         #endif
 
         #ifdef __AVX2__
-        vector_f64 operator+ (const vector_f64& vec)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, add, add);
-            return tmp;
-        }
-        vector_f64 operator- (const vector_f64& vec)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, sub, sub);
-            return tmp;
-        }
-        vector_f64 operator* (const vector_f64& vec)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, mul, mul);
-            return tmp;
-        }
-        vector_f64 operator/ (const vector_f64& vec)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, vec, div, div);
-            return tmp;
-        }
+        vector_f64 operator+ (const vector_f64& vec) { return do_AVX2_create(*this, vec, add, add); }
+        vector_f64 operator- (const vector_f64& vec) { return do_AVX2_create(*this, vec, sub, sub); }
+        vector_f64 operator* (const vector_f64& vec) { return do_AVX2_create(*this, vec, mul, mul); }
+        vector_f64 operator/ (const vector_f64& vec) { return do_AVX2_create(*this, vec, div, div); }
+        vector_f64 operator+ (const double& x) { return do_AVX2_create(*this, x, add, add); }
+        vector_f64 operator- (const double& x) { return do_AVX2_create(*this, x, sub, sub); }
+        vector_f64 operator* (const double& x) { return do_AVX2_create(*this, x, mul, mul); }
+        vector_f64 operator/ (const double& x) { return do_AVX2_create(*this, x, div, div); }
 
-        vector_f64 operator+ (const double& x)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, x, add, add);
-            return tmp;
-        }
-        vector_f64 operator- (const double& x)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, x, sub, sub);
-            return tmp;
-        }
-        vector_f64 operator* (const double& x)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, x, mul, mul);
-            return tmp;
-        }
-        vector_f64 operator/ (const double& x)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX2_prtn(tmp, *this, x, div, div);
-            return tmp;
-        }
         #elif defined(__AVX__)
-        vector_f64 operator+ (const vector_f64& vec)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, add, add);
-            return tmp;
-        }
-        vector_f64 operator- (const vector_f64& vec)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, sub, sub);
-            return tmp;
-        }
-        vector_f64 operator* (const vector_f64& vec)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, mul, mul);
-            return tmp;
-        }
-        vector_f64 operator/ (const vector_f64& vec)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, vec, div, div);
-            return tmp;
-        }
-
-        vector_f64 operator+ (const double& x)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, x, add, add);
-            return tmp;
-        }
-        vector_f64 operator- (const double& x)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, x, sub, sub);
-            return tmp;
-        }
-        vector_f64 operator* (const double& x)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, x, mul, mul);
-            return tmp;
-        }
-        vector_f64 operator/ (const double& x)
-        {
-            vector_f64 tmp(size());
-            if (tmp.data() != nullptr) AVX_prtn(tmp, *this, x, div, div);
-            return tmp;
-        }
+        vector_f64 operator+ (const vector_f64& vec) { return do_AVX_create(*this, vec, add, add); }
+        vector_f64 operator- (const vector_f64& vec) { return do_AVX_create(*this, vec, sub, sub); }
+        vector_f64 operator* (const vector_f64& vec) { return do_AVX_create(*this, vec, mul, mul); }
+        vector_f64 operator/ (const vector_f64& vec) { return do_AVX_create(*this, vec, div, div); }
+        vector_f64 operator+ (const double& x) { return do_AVX_create(*this, x, add, add); }
+        vector_f64 operator- (const double& x) { return do_AVX_create(*this, x, sub, sub); }
+        vector_f64 operator* (const double& x) { return do_AVX_create(*this, x, mul, mul); }
+        vector_f64 operator/ (const double& x) { return do_AVX_create(*this, x, div, div); }
         #else
         vector_f64 operator+ (const vector_f64& vec) { return do_scalar_create(*this, vec, add); }
         vector_f64 operator- (const vector_f64& vec) { return do_scalar_create(*this, vec, sub); }
