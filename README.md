@@ -10,7 +10,7 @@ This is done by a very minimal and simple concept:
 
 - HCL has a "base" class defined in `./HCL/vector.cpp` named `HCL::vector_vanilla<T>`.
 - Standard classes natively included in HCL, like `vector_f32` (float array) and `vector_f64` (double array) derive from this base class.
-- This allows for easy optimization for each type (i8, f32, f64) using both multi-threading (native's use OMP) and secure use of AVX2.
+- This allows for easy optimization for each type (i8, f32, f64) using both multi-threading (natives use OMP) and secure use of AVX2.
 
 All types are defined in the `./HCL/vector.cpp` file, and I'm building on `./HCL/matrix.cpp`.  
 As of _22/05/2025_, following containers are native in HCL:
