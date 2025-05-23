@@ -216,7 +216,7 @@ namespace HCL
         vector_f64 do_AVX_create(const vector_f64& b, const T& c, __m128d (*f) (const __m128d&, const __m128d&), double (*fs) (const double&, const double&))
         {
 #ifdef DEBUG
-            if ((b.size() != size()) || (c.size() != size()))
+            if (b.size() != c.size())
                 throw std::runtime_error("HCL::vector_f64 (do_AVX_create): Both vectors need to be of same size.");
 #endif
             vector_f64 a(size());
