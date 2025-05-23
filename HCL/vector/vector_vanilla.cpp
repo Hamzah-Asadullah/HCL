@@ -25,10 +25,12 @@ namespace HCL
         vector_vanilla(): mem(nullptr), n_elems(0), is_column(true) {}
         vector_vanilla(std::size_t elems) { resize(elems); }
 
+        // size transpose data
         std::size_t size() const { return n_elems; }
         void transpose() { is_column = !is_column; }
         const T* data() const { return mem; }
 
+        // resize
         std::size_t resize(std::size_t elems)
         {
             if (elems == n_elems)
@@ -54,8 +56,8 @@ namespace HCL
             return n_elems;
         }
 
+        // setX applyFn
         void setX(T x) { std::fill(mem, mem + n_elems, x); }
-
         void applyFn(T (*fn) (const T&))
         {
 #pragma omp parallel for
@@ -63,6 +65,7 @@ namespace HCL
                 mem[i] = fn(mem[i]);
         }
 
+        // do_scalar
         void do_scalar(const vector_vanilla<T>& b, const vector_vanilla<T>& c, T (*fs) (const T&, const T&))
         {
 #ifdef DEBUG
@@ -96,6 +99,7 @@ namespace HCL
                 mem[i] = fs(b, c[i]);
         }
 
+        // _free
         void _free()
         {
             if (mem != nullptr)

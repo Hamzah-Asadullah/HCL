@@ -19,33 +19,17 @@ namespace HCL
         static double mul(const double& a, const double& b) { return a * b; }
         static double div(const double& a, const double& b) { return a / b; }
 
-        static vector_f64 do_scalar_create(const vector_f64& b, const vector_f64& c, double (*fs) (const double&, const double&))
-        {
-            vector_f64 a(b.size());
-            if (a.data() != nullptr)
-                a.do_scalar(b, c, fs);
-            return a;    
-        }
-
-        static vector_f64 do_scalar_create(const vector_f64& b, const double& c, double (*fs) (const double&, const double&))
-        {
-            vector_f64 a(b.size());
-            if (a.data() != nullptr)
-                a.do_scalar(b, c, fs);
-            return a;
-        }
-
         #ifdef __AVX2__
         static __m256d add(const __m256d& a, const __m256d& b) { return _mm256_add_pd(a, b); }
         static __m256d sub(const __m256d& a, const __m256d& b) { return _mm256_sub_pd(a, b); }
         static __m256d mul(const __m256d& a, const __m256d& b) { return _mm256_mul_pd(a, b); }
         static __m256d div(const __m256d& a, const __m256d& b) { return _mm256_div_pd(a, b); }
     
+        // AVX2_prtn
         void AVX2_prtn
         (
             vector_f64& a, const vector_f64& b, const vector_f64& c,
-            __m256d (*f) (const __m256d&, const __m256d&),
-            double (*fs) (const double&, const double&)
+            __m256d (*f) (const __m256d&, const __m256d&), double (*fs) (const double&, const double&)
         )
         {
 #ifdef DEBUG
@@ -72,8 +56,7 @@ namespace HCL
         void AVX2_prtn
         (
             vector_f64& a, const vector_f64& b, const double& c,
-            __m256d (*f) (const __m256d&, const __m256d&),
-            double (*fs) (const double&, const double&)
+            __m256d (*f) (const __m256d&, const __m256d&), double (*fs) (const double&, const double&)
         )
         {
 #ifdef DEBUG
@@ -100,8 +83,7 @@ namespace HCL
         void AVX2_prtn
         (
             vector_f64& a, const double& b, const vector_f64& c,
-            __m256d (*f) (const __m256d&, const __m256d&),
-            double (*fs) (const double&, const double&)
+            __m256d (*f) (const __m256d&, const __m256d&), double (*fs) (const double&, const double&)
         )
         {
 #ifdef DEBUG
@@ -125,14 +107,15 @@ namespace HCL
                 a[i] = fs(b, c[i]);
         }
 
+        // do_AVX2_create
         template <typename T>
         vector_f64 do_AVX2_create(const vector_f64& b, const T& c, __m256d (*f) (const __m256d&, const __m256d&), double (*fs) (const double&, const double&))
         {
 #ifdef DEBUG
-            if ((b.size() != size()) || (c.size() != size()))
+            if (b.size() != c.size())
                 throw std::runtime_error("HCL::vector_f64 (do_AVX2_create): Both vectors need to be of same size.");
 #endif
-            vector_f64 a(size());
+            vector_f64 a(b.size());
             if (a.size())
                 AVX2_prtn(a, b, c, f, fs);
             return a;
@@ -143,6 +126,7 @@ namespace HCL
         static __m128d mul(const __m128d& a, const __m128d& b) { return _mm_mul_pd(a, b); }
         static __m128d div(const __m128d& a, const __m128d& b) { return _mm_div_pd(a, b); }
     
+        // AVX_prtn
         void AVX_prtn
         (
             vector_f64& a, const vector_f64& b, const vector_f64& c,
@@ -227,6 +211,7 @@ namespace HCL
                 a[i] = fs(b, c[i]);
         }
 
+        // do_AVX_create
         template <typename T>
         vector_f64 do_AVX_create(const vector_f64& b, const T& c, __m128d (*f) (const __m128d&, const __m128d&), double (*fs) (const double&, const double&))
         {
@@ -240,6 +225,16 @@ namespace HCL
             return a;
         }
         #endif
+
+        // do_scalar_create
+        template <typename T>
+        static vector_f64 do_scalar_create(const vector_f64& b, const T& c, double (*fs) (const double&, const double&))
+        {
+            vector_f64 a(b.size());
+            if (a.data() != nullptr)
+                a.do_scalar(b, c, fs);
+            return a;    
+        }
 
     public:
         using vector_vanilla<double>::vector_vanilla;
@@ -317,7 +312,6 @@ namespace HCL
         vector_f64 operator- (const double& x) { return do_AVX2_create(*this, x, sub, sub); }
         vector_f64 operator* (const double& x) { return do_AVX2_create(*this, x, mul, mul); }
         vector_f64 operator/ (const double& x) { return do_AVX2_create(*this, x, div, div); }
-
         #elif defined(__AVX__)
         vector_f64 operator+ (const vector_f64& vec) { return do_AVX_create(*this, vec, add, add); }
         vector_f64 operator- (const vector_f64& vec) { return do_AVX_create(*this, vec, sub, sub); }

@@ -2,13 +2,13 @@
 #include <chrono>
 #include <string>
 
-#include "./HCL/vector/vector_f64.cpp"
+#include "./HCL/vector/vector_f32.cpp"
+#define SCALAR_TYPE float
+#define VECTOR_TYPE HCL::vector_f32
 
 #ifdef _WIN32 // For UTF
 #include <windows.h>
 #endif
-
-#define TYPE double
 
 using namespace std::chrono;
 
@@ -23,15 +23,15 @@ int main()
     #endif
 
     #ifdef __AVX2__
-    std::cout << ">> AVX2 found, will most likely not crash.\n";
+    std::cout << ">> Mode: AVX256.\n";
     #elif defined(__AVX__)
-    std::cout << ">> AVX found, will most likely not crash.\n";
+    std::cout << ">> Mode: AVX128.\n";
     #else
-    std::cout << ">> Both AVX2 and AVX missing; falling back to scalar. Will be \"slow\".\n";
+    std::cout << ">> Mode: Scalar.\n";
     #endif
 
     std::size_t elems = 0; // If that's 0 it'll prompt
-    std::size_t bytes = sizeof(TYPE);
+    std::size_t bytes = sizeof(SCALAR_TYPE);
 
     if (elems == 0)
     {
@@ -67,28 +67,40 @@ int main()
     }
     while (!thread_set);
 
-    HCL::vector_f64 vec(elems);
+    VECTOR_TYPE vec(elems);
+    if (vec.size())
+        vec.setX(5.f);
+    else
+    {
+        std::cout << ">> Failed to allocate memory, returning...";
+        return 1;
+    }
 
     // On GCC / G++ / MinGW, it'll most likely always return a thread count of 1. Can't do anything about it.
-    std::cout << ">> Starting calculations using " << omp_get_num_threads() << " threads managed by OMP.\n";
+    std::cout << ">> Starting calculations using " << omp_get_num_threads() << " threads managed by OMP.";
     time_point start = high_resolution_clock::now(), end = start;
-    vec += TYPE(15);
-    vec -= TYPE(5);
-    vec *= TYPE(3);
-    vec /= TYPE(2);
+    vec += SCALAR_TYPE(15);
+    vec -= SCALAR_TYPE(5);
+    vec *= SCALAR_TYPE(3);
+    vec /= SCALAR_TYPE(2);
 
-    vec.sum(vec, TYPE(15));
-    vec.dif(vec, TYPE(5));
-    vec.pro(vec, TYPE(3));
-    vec.quo(vec, TYPE(2));
+    std::cout << "\r"; // Clear last line
+    for (std::size_t i = 0; i < 60; ++i) std::cout << " ";
+    std::cout << "\r>> Done with direct (+=, ...) operants...";
 
-    vec.dif(TYPE(10), vec);
-    vec.quo(TYPE(10), vec);
+    vec.sum(vec, SCALAR_TYPE(15));
+    vec.dif(vec, SCALAR_TYPE(5));
+    vec.pro(vec, SCALAR_TYPE(3));
+    vec.quo(vec, SCALAR_TYPE(2));
+    vec.dif(SCALAR_TYPE(10), vec);
+    vec.quo(SCALAR_TYPE(10), vec);
 
-    vec = vec + TYPE(15);
-    vec = vec - TYPE(5);
-    vec = vec * TYPE(3);
-    vec = vec / TYPE(2);
+    std::cout << "\r>> Done with normal functions (.sum, ...) ...";
+
+    vec = vec + SCALAR_TYPE(15);
+    vec = vec - SCALAR_TYPE(5);
+    vec = vec * SCALAR_TYPE(3);
+    vec = vec / SCALAR_TYPE(2);
     end = high_resolution_clock::now();
 
     std::cout
