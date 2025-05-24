@@ -1,27 +1,69 @@
-**HCL - A simple library which supports your optimizations, types, and other.**
+# HCL - Hamzah's Computing Library
 
-HCL, short for `Hamzah's Computing Library` is a simple headers-only library which allows for different kind of optimizations, including:
+![License](https://img.shields.io/badge/License-MIT-blue) 
+![OpenMP](https://img.shields.io/badge/OpenMP-Enabled-green)
+![AVX2](https://img.shields.io/badge/SIMD-AVX2%2FAVX-red)
 
-- The use of AVX, AVX2 (compile with GCC flag `-march=native` for auto-detection, `-mavx` or `-mavx2` for manual)
-- The use of multiple threads using OpenMP (compile with GCC flag `-fopenmp`)
-- And soon, GPU by using the Open Computing Language (OpenCL)
+A lightweight C++ library for high-performance vector operations with SIMD (AVX/AVX2) and OpenMP multi-threading support.
 
-This is done by a very minimal and simple concept:  
+## Features
 
-- HCL has a "base" class defined in `./HCL/vector.cpp` named `HCL::vector_vanilla<T>`.
-- Standard classes natively included in HCL, like `vector_f32` (float array) and `vector_f64` (double array) derive from this base class.
-- This allows for easy optimization for each type (i8, f32, f64) using both multi-threading (natives use OMP) and secure use of AVX2.
+- 🚀 **SIMD Optimizations**: Auto-vectorized operations using AVX/AVX2 intrinsics
+- ⚡ **Multi-threading**: Parallelized loops via OpenMP
+- 📦 **Pre-built Types**: `vector_f32`, `vector_f64`, `vector_i8` for floats, doubles, and int8
+- 🔧 **Extensible**: Derive from `vector_vanilla<T>` to create custom optimized types
+- 🛠️ **Aligned Memory**: Cache-friendly allocation for SIMD operations
 
-All types are defined in the `./HCL/vector.cpp` file, and I'm building on `./HCL/matrix.cpp`.  
-As of _22/05/2025_, following containers are native in HCL:
+## Quick Start
 
-- `vector_vanilla<T>`: The base class from which all other types derive
-- `vector_f64` and `vector_f32`: `double` and `float` containers optimized using AVX256 and OMP
-- `vector_i8`: a `int8_t` / `unsigned char` container which uses OMP and partially SIMD as full support for SIMD (mainly mult & div) is weird 
+### Compilation
+```bash
+g++ main.cpp -march=native -fopenmp -O3 -Wall -o main.exe
+```
 
-This allows me and you to add support for your own type, and its optimizations, directly to the library, simply by deriving from the base class and overloading operators like `*=` efficiently.  
-You can find a demo of the library using `HCL::vector_i8` (including time-based benchmarking) in the `main.cpp`.
+### Example Usage
+```cpp
+#include "./HCL/vector/vector_f64.cpp"
 
-**View Counter**
+int main()
+{
+    HCL::vector_f64 a(1000), b(1000);
+    a.setX(2.5);  // Fill with 2.5
+    b.setX(1.5);
+    
+    a += b;        // AVX2-accelerated addition
+    auto c = a * 3.14;  // Scalar multiplication
+    std::cout << c;
+    return 0;
+}
+```
 
-![View Counter Visual Image](https://count.getloli.com/@Hamzah-Asadullah_HCL?name=Hamzah-Asadullah_HCL&theme=booru-lewd&padding=1&offset=0&align=center&scale=1&pixelated=0&darkmode=auto)
+## Documentation
+[📚 Explore the Wiki](https://github.com/Hamzah-Asadullah/HCL/wiki) for:
+- API reference
+- Custom type creation guide
+- Performance benchmarks
+- GPU acceleration roadmap (OpenCL)
+
+## Structure
+```
+./
+├── main.cpp
+└── HCL/
+    ├── aligned_malloc.cpp
+    └── vector/
+        ├── vector_vanilla.cpp  # Base class
+        ├── vector_f32.cpp      # Float32 optimized
+        ├── vector_f64.cpp      # Float64 optimized
+        └── vector_i8.cpp       # Int8 operations
+```
+
+## Contributing
+PRs welcome! See [CONTRIBUTING.md](https://github.com/Hamzah-Asadullah/HCL/wiki/Contributing) for guidelines.
+
+## License
+MIT © 2025 Hamzah Asadullah
+
+---
+
+[![View Counter](https://count.getloli.com/@Hamzah-Asadullah_HCL?theme=booru-lewd)](https://github.com/Hamzah-Asadullah/HCL)
