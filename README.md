@@ -59,7 +59,7 @@ int main()
 ```
 
 ## Contributing
-PRs welcome! See [CONTRIBUTING.md](https://github.com/Hamzah-Asadullah/HCL/wiki/Contributing) for guidelines.
+PRs welcome! See [CONTRIBUTING.md](https://github.com/Hamzah-Asadullah/HCL/wiki#contributing) for guidelines.
 
 ## License
 MIT © 2025 Hamzah Asadullah
