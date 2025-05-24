@@ -43,7 +43,7 @@ int main()
 - API reference
 - Custom type creation guide
 - Performance benchmarks
-- GPU acceleration roadmap (OpenCL)
+- GPU acceleration roadmap (CUDA, AMD kinda doesn't support anything non-shader)
 
 ## Structure
 ```
