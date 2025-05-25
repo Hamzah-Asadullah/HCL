@@ -148,7 +148,7 @@ std::ostream& operator<< (std::ostream& os, const HCL::vector_vanilla<T>& vec)
     std::size_t till = vec.size() - 1;
     if (vec.is_column)
     {
-        os << "[ " << vec[0] << " ]";
+        os << "[ " << vec[0] << " ]\n";
         for (std::size_t i = 1; i < till; ++i)
             os << "| " << vec[i] << " |\n";
         os << "[ " << vec[till] << " ]";
