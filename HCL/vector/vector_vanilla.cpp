@@ -25,11 +25,6 @@ namespace HCL
         vector_vanilla(): mem(nullptr), n_elems(0), is_column(true) {}
         vector_vanilla(std::size_t elems) { resize(elems); }
 
-        // size transpose data
-        std::size_t size() const { return n_elems; }
-        void transpose() { is_column = !is_column; }
-        const T* data() const { return mem; }
-
         // resize
         std::size_t resize(std::size_t elems)
         {
@@ -41,27 +36,28 @@ namespace HCL
             else _free();
 
             std::size_t block_size = std::max(sizeof(T) * 8, alignof(std::max_align_t));
-            #ifdef __AVX2__
-            block_size = std::max(block_size, std::size_t(32));
-            #elif defined(__AVX__)
-            block_size = std::max(block_size, std::size_t(16));
-            #endif
+                        block_size = std::max(block_size, std::size_t(32));
             mem = simple_aligned_malloc<T>(block_size, sizeof(T) * elems);
+
             if (mem == nullptr) _free();
             else
             {
                 n_elems = elems;
                 setX(T(0));
             }
+
             return n_elems;
         }
 
-        // setX applyFn
+        // setX applyFn size transpose data
+        std::size_t size() const { return n_elems; }
+        void transpose() { is_column = !is_column; }
+        const T* data() const { return mem; }
         void setX(T x) { std::fill(mem, mem + n_elems, x); }
         void applyFn(T (*fn) (const T&))
         {
 #pragma omp parallel for
-            for (std::size_t i = 0; i < n_elems; ++i)
+            for (std::intmax_t i = 0; i < std::intmax_t(n_elems); ++i)
                 mem[i] = fn(mem[i]);
         }
 
@@ -69,11 +65,11 @@ namespace HCL
         void do_scalar(const vector_vanilla<T>& b, const vector_vanilla<T>& c, T (*fs) (const T&, const T&))
         {
 #ifdef DEBUG
-            if ((b.size() != c.size()) || (n_elems != c.size()))
+            if ((b.size() != c.size()) or (n_elems != c.size()))
                 throw std::runtime_error("HCL::vector_vanilla (do_scalar): Vectors a, b and c have to be of same size.");
 #endif
 #pragma omp parallel for
-            for (std::size_t i = 0; i < n_elems; ++i)
+            for (std::intmax_t i = 0; i < std::intmax_t(n_elems); ++i)
                 mem[i] = fs(b[i], c[i]);
         }
 
@@ -84,7 +80,7 @@ namespace HCL
                 throw std::runtime_error("HCL::vector_vanilla (do_scalar): Vectors a and b have to be of same size.");
 #endif
 #pragma omp parallel for
-            for (std::size_t i = 0; i < n_elems; ++i)
+            for (std::intmax_t i = 0; i < std::intmax_t(n_elems); ++i)
                 mem[i] = fs(b[i], c);
         }
 
@@ -95,7 +91,7 @@ namespace HCL
                 throw std::runtime_error("HCL::vector_vanilla (do_scalar): Vectors a and b have to be of same size.");
 #endif
 #pragma omp parallel for
-            for (std::size_t i = 0; i < n_elems; ++i)
+            for (std::intmax_t i = 0; i < std::intmax_t(n_elems); ++i)
                 mem[i] = fs(b, c[i]);
         }
 
@@ -109,6 +105,8 @@ namespace HCL
             }
             n_elems = 0;
         }
+
+        ~vector_vanilla() { _free(); }
 
         T& operator[] (std::size_t i)
         {
@@ -133,11 +131,9 @@ namespace HCL
             if (vec.size() != n_elems)
                 resize(vec.size());
 
-            std::copy(&(vec[0]), &(vec[n_elems]), &(mem[0]));
+            std::copy(vec.data(), vec.data() + n_elems, mem);
             is_column = vec.is_column;
         }
-
-        ~vector_vanilla() { _free(); }
     };
 };
 
