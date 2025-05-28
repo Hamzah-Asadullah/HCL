@@ -1,5 +1,4 @@
 #include <immintrin.h>
-#include <cstdlib>
 #include <cstdint>
 #include <stdexcept>
 #include <omp.h>
@@ -46,8 +45,7 @@ namespace HCL
                 _mm256_store_si256(reinterpret_cast<__m256i*>(&a[i]), va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b[i], c[i]);
         }
 
@@ -73,8 +71,7 @@ namespace HCL
                 _mm256_store_si256(reinterpret_cast<__m256i*>(&a[i]), va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b[i], c);
         }
 
@@ -100,8 +97,7 @@ namespace HCL
                 _mm256_store_si256(reinterpret_cast<__m256i*>(&a[i]), va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b, c[i]);
         }
 
@@ -141,8 +137,7 @@ namespace HCL
                 _mm_store_si128(reinterpret_cast<__m128i*>(&a[i]), va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b[i], c[i]);
         }
 
@@ -168,8 +163,7 @@ namespace HCL
                 _mm_store_si128(reinterpret_cast<__m128i*>(&a[i]), va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b[i], c);
         }
 
@@ -195,8 +189,7 @@ namespace HCL
                 _mm_store_si128(reinterpret_cast<__m128i*>(&a[i]), va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b, c[i]);
         }
 
@@ -229,44 +222,53 @@ namespace HCL
         using vector_vanilla<int8_t>::vector_vanilla;
 
         #ifdef __AVX2__
-        void operator+= (const vector_i8& vec) { AVX2_prtn(*this, *this, vec, add, add); }
-        void operator-= (const vector_i8& vec) { AVX2_prtn(*this, *this, vec, sub, sub); }
-        void operator+= (const int8_t& x) { AVX2_prtn(*this, *this, x, add, add); }
-        void operator-= (const int8_t& x) { AVX2_prtn(*this, *this, x, sub, sub); }
-        #elif defined(__AVX__)
-        void operator+= (const vector_i8& vec) { AVX_prtn(*this, *this, vec, add, add); }
-        void operator-= (const vector_i8& vec) { AVX_prtn(*this, *this, vec, sub, sub); }
-        void operator+= (const int8_t& vec) { AVX_prtn(*this, *this, vec, add, add); }
-        void operator-= (const int8_t& vec) { AVX_prtn(*this, *this, vec, sub, sub); }
-        #else
-        void operator+= (const vector_i8& vec) { do_scalar(*this, vec, add); }
-        void operator-= (const vector_i8& vec) { do_scalar(*this, vec, sub); }
-        void operator+= (const int8_t& vec) { do_scalar(*this, vec, add); }
-        void operator-= (const int8_t& vec) { do_scalar(*this, vec, sub); }
-        #endif
-        void operator*= (const vector_i8& vec) { do_scalar(*this, vec, mul); }
-        void operator/= (const vector_i8& vec) { do_scalar(*this, vec, div); }
-        void operator*= (const int8_t& vec) { do_scalar(*this, vec, mul); }
-        void operator/= (const int8_t& vec) { do_scalar(*this, vec, div); }
-
-        #ifdef __AVX2__
         void sum(const vector_i8& a, const vector_i8& b) { AVX2_prtn(*this, a, b, add, add); }
         void dif(const vector_i8& a, const vector_i8& b) { AVX2_prtn(*this, a, b, sub, sub); }
         void sum(const vector_i8& a, const int8_t& b) { AVX2_prtn(*this, a, b, add, add); }
         void dif(const vector_i8& a, const int8_t& b) { AVX2_prtn(*this, a, b, sub, sub); }
         void dif(const int8_t& a, const vector_i8& b) { AVX2_prtn(*this, a, b, sub, sub); }
+
+        void operator+= (const vector_i8& vec) { AVX2_prtn(*this, *this, vec, add, add); }
+        void operator-= (const vector_i8& vec) { AVX2_prtn(*this, *this, vec, sub, sub); }
+        void operator+= (const int8_t& x) { AVX2_prtn(*this, *this, x, add, add); }
+        void operator-= (const int8_t& x) { AVX2_prtn(*this, *this, x, sub, sub); }
+
+        vector_i8 operator+ (const vector_i8& vec) { return do_AVX2_create(*this, vec, add, add); }
+        vector_i8 operator- (const vector_i8& vec) { return do_AVX2_create(*this, vec, sub, sub); }
+        vector_i8 operator+ (const int8_t& x) { return do_AVX2_create(*this, x, add, add); }
+        vector_i8 operator- (const int8_t& x) { return do_AVX2_create(*this, x, sub, sub); }
         #elif defined(__AVX__)
         void sum(const vector_i8& a, const vector_i8& b) { AVX_prtn(*this, a, b, add, add); }
         void dif(const vector_i8& a, const vector_i8& b) { AVX_prtn(*this, a, b, sub, sub); }
         void sum(const vector_i8& a, const int8_t& b) { AVX_prtn(*this, a, b, add, add); }
         void dif(const vector_i8& a, const int8_t& b) { AVX_prtn(*this, a, b, sub, sub); }
         void dif(const int8_t& a, const vector_i8& b) { AVX_prtn(*this, a, b, sub, sub); }
+
+        void operator+= (const vector_i8& vec) { AVX_prtn(*this, *this, vec, add, add); }
+        void operator-= (const vector_i8& vec) { AVX_prtn(*this, *this, vec, sub, sub); }
+        void operator+= (const int8_t& vec) { AVX_prtn(*this, *this, vec, add, add); }
+        void operator-= (const int8_t& vec) { AVX_prtn(*this, *this, vec, sub, sub); }
+        
+        vector_i8 operator+ (const vector_i8& vec) { return do_AVX_create(*this, vec, add, add); }
+        vector_i8 operator- (const vector_i8& vec) { return do_AVX_create(*this, vec, sub, sub); }
+        vector_i8 operator+ (const int8_t& x) { return do_AVX_create(*this, x, add, add); }
+        vector_i8 operator- (const int8_t& x) { return do_AVX_create(*this, x, sub, sub); }
         #else
         void sum(const vector_i8& a, const vector_i8& b) { do_scalar(a, b, add); }
         void dif(const vector_i8& a, const vector_i8& b) { do_scalar(a, b, sub); }
         void sum(const vector_i8& a, const int8_t& b) { do_scalar(a, b, add); }
         void dif(const vector_i8& a, const int8_t& b) { do_scalar(a, b, sub); }
         void dif(const int8_t& a, const vector_i8& b) { do_scalar(a, b, sub); }
+
+        void operator+= (const vector_i8& vec) { do_scalar(*this, vec, add); }
+        void operator-= (const vector_i8& vec) { do_scalar(*this, vec, sub); }
+        void operator+= (const int8_t& vec) { do_scalar(*this, vec, add); }
+        void operator-= (const int8_t& vec) { do_scalar(*this, vec, sub); }
+        
+        vector_i8 operator+ (const vector_i8& vec) { return do_scalar_create(*this, vec, add); }
+        vector_i8 operator- (const vector_i8& vec) { return do_scalar_create(*this, vec, sub); }
+        vector_i8 operator+ (const int8_t& x) { return do_scalar_create(*this, x, add); }
+        vector_i8 operator- (const int8_t& x) { return do_scalar_create(*this, x, sub); }
         #endif
         void pro(const vector_i8& a, const vector_i8& b) { do_scalar(a, b, mul); }
         void quo(const vector_i8& a, const vector_i8& b) { do_scalar(a, b, div); }
@@ -274,22 +276,10 @@ namespace HCL
         void quo(const vector_i8& a, const int8_t& b) { do_scalar(a, b, div); }
         void quo(const int8_t& a, const vector_i8& b) { do_scalar(a, b, div); }
 
-        #ifdef __AVX2__
-        vector_i8 operator+ (const vector_i8& vec) { return do_AVX2_create(*this, vec, add, add); }
-        vector_i8 operator- (const vector_i8& vec) { return do_AVX2_create(*this, vec, sub, sub); }
-        vector_i8 operator+ (const int8_t& x) { return do_AVX2_create(*this, x, add, add); }
-        vector_i8 operator- (const int8_t& x) { return do_AVX2_create(*this, x, sub, sub); }
-        #elif defined(__AVX__)
-        vector_i8 operator+ (const vector_i8& vec) { return do_AVX_create(*this, vec, add, add); }
-        vector_i8 operator- (const vector_i8& vec) { return do_AVX_create(*this, vec, sub, sub); }
-        vector_i8 operator+ (const int8_t& x) { return do_AVX_create(*this, x, add, add); }
-        vector_i8 operator- (const int8_t& x) { return do_AVX_create(*this, x, sub, sub); }
-        #else
-        vector_i8 operator+ (const vector_i8& vec) { return do_scalar_create(*this, vec, add); }
-        vector_i8 operator- (const vector_i8& vec) { return do_scalar_create(*this, vec, sub); }
-        vector_i8 operator+ (const int8_t& x) { return do_scalar_create(*this, x, add); }
-        vector_i8 operator- (const int8_t& x) { return do_scalar_create(*this, x, sub); }
-        #endif
+        void operator*= (const vector_i8& vec) { do_scalar(*this, vec, mul); }
+        void operator/= (const vector_i8& vec) { do_scalar(*this, vec, div); }
+        void operator*= (const int8_t& vec) { do_scalar(*this, vec, mul); }
+        void operator/= (const int8_t& vec) { do_scalar(*this, vec, div); }
 
         vector_i8 operator* (const vector_i8& vec) { return do_scalar_create(*this, vec, mul); }
         vector_i8 operator/ (const vector_i8& vec) { return do_scalar_create(*this, vec, div); }

@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <iostream>
-#include <cstdlib>
 #include <cstdint>
 #include <stdexcept>
 #include <omp.h>
@@ -14,18 +13,17 @@ namespace HCL
 {
     struct matrix_shape
     {
-        std::size_t rows = 0, cols = 0;
-        inline std::size_t sum() { return rows * cols; }
+        std::size_t rows = 0, cols = 0, sum = 0;
 
-        bool is_duplicate(const matrix_shape& s)
+        bool is_duplicate(const matrix_shape& s) const
         {
             if ((s.rows == rows) and (s.cols == cols))
                 return true;
             return false;
         }
 
-        matrix_shape(std::size_t r, std::size_t c) { rows = r, cols = c; }
-        matrix_shape(): rows(0), cols(0) {}
+        matrix_shape(std::size_t r, std::size_t c) { rows = r, cols = c; sum = r * c; }
+        matrix_shape(): rows(0), cols(0), sum(0) {}
     };
     
     template <typename T>
@@ -58,19 +56,26 @@ namespace HCL
             {
                 shape.rows = rows;
                 shape.cols = cols;
+                shape.sum = rows * cols;
                 setX(T(0));
             }
 
             return shape;
         }
 
+        // transpose
+        void transpose()
+        {
+
+        }
+
         // size data setX applyFn
         const matrix_shape& size() const { return shape; }
         const T* data() const { return mem; }
-        void setX(T x) { std::fill(mem, mem + shape.sum(), x); }
+        void setX(T x) { std::fill(mem, mem + shape.sum, x); }
         void applyFn(T (*f) (const T&))
         {
-            std::intmax_t elems(shape.sum());
+            std::intmax_t elems(shape.sum);
 #pragma omp parallel for
             for (std::intmax_t i = 0; i < elems; ++i)
                 mem[i] = f(mem[i]);
@@ -83,7 +88,7 @@ namespace HCL
             if (not (shape.is_duplicate(b.size()) or shape.is_duplicate(c.size())))
                 throw std::runtime_error("HCL::matrix_vanilla (do_scalar): Matrices a, b and c have to be of same size.");
 #endif
-            std::intmax_t elems = shape.sum();
+            std::intmax_t elems = shape.sum;
 #pragma omp parallel for
             for (std::intmax_t i = 0; i < elems; ++i)
                 mem[i] = fs(b.mem[i], c.mem[i]);
@@ -95,7 +100,7 @@ namespace HCL
             if (not (shape.is_duplicate(b.size()) or shape.is_duplicate(c.size())))
                 throw std::runtime_error("HCL::matrix_vanilla (do_scalar): Matrices a, b and c have to be of same size.");
 #endif
-            std::intmax_t elems = shape.sum();
+            std::intmax_t elems = shape.sum;
 #pragma omp parallel for
             for (std::intmax_t i = 0; i < elems; ++i)
                 mem[i] = fs(b.mem[i], c);
@@ -107,7 +112,7 @@ namespace HCL
             if (not (shape.is_duplicate(b.size()) or shape.is_duplicate(c.size())))
                 throw std::runtime_error("HCL::matrix_vanilla (do_scalar): Matrices a, b and c have to be of same size.");
 #endif
-            std::intmax_t elems = shape.sum();
+            std::intmax_t elems = shape.sum;
 #pragma omp parallel for
             for (std::intmax_t i = 0; i < elems; ++i)
                 mem[i] = fs(b, c.mem[i]);
@@ -127,11 +132,29 @@ namespace HCL
 
         ~matrix_vanilla() { _free(); }
 
+        T& operator[] (std::size_t i)
+        {
+#ifdef DEBUG
+            if (i >= shape.sum)
+                throw std::runtime_error("HCL::matrix_vanilla operator[]: (flattened) Matrix subscript out of range.")
+#endif
+            return mem[i];
+        }
+
+        const T& operator[] (std::size_t i) const
+        {
+#ifdef DEBUG
+            if (i >= shape.sum)
+                throw std::runtime_error("HCL::matrix_vanilla operator[]: (flattened) Matrix subscript out of range.")
+#endif
+            return mem[i];
+        }
+
         T& operator() (std::size_t r, std::size_t c)
         {
 #ifdef DEBUG
             if ((r >= shape.rows) or (c >= shape.cols))
-                throw std::runtime_error("HCL::matrix_vanilla operator[]: Matrix subscript out of range.");
+                throw std::runtime_error("HCL::matrix_vanilla operator(std::size_t, std::size_t): Matrix subscripts out of range.");
 #endif
             return mem[r * shape.cols + c];
         }
@@ -140,7 +163,7 @@ namespace HCL
         {
 #ifdef DEBUG
             if ((r >= shape.rows) or (c >= shape.cols))
-                throw std::runtime_error("HCL::matrix_vanilla operator[]: Matrix subscript out of range.");
+                throw std::runtime_error("HCL::matrix_vanilla operator(std::size_t, std::size_t): Matrix subscripts out of range.");
 #endif
             return mem[r * shape.cols + c];
         }
@@ -149,7 +172,7 @@ namespace HCL
         {
             if ((shape.rows != mtrx.size().rows) and (shape.cols != mtrx.size().cols))
                 resize(mtrx.size().rows, mtrx.size().cols);
-            std::copy(mtrx.data(), mtrx.data() + mtrx.size().sum(), mem);
+            std::copy(mtrx.data(), mtrx.data() + mtrx.size().rows * mtrx.size().cols, mem);
         }
     };
 };

@@ -1,5 +1,4 @@
 #include <immintrin.h>
-#include <cstdlib>
 #include <cstdint>
 #include <stdexcept>
 #include <omp.h>
@@ -48,8 +47,7 @@ namespace HCL
                 _mm256_store_ps(&a[i], va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b[i], c[i]);
         }
 
@@ -75,8 +73,7 @@ namespace HCL
                 _mm256_store_ps(&a[i], va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b[i], c);
         }
 
@@ -102,8 +99,7 @@ namespace HCL
                 _mm256_store_ps(&a[i], va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b, c[i]);
         }
 
@@ -150,8 +146,7 @@ namespace HCL
                 _mm_store_ps(&a[i], va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b[i], c[i]);
         }
 
@@ -178,8 +173,7 @@ namespace HCL
                 _mm_store_ps(&a[i], va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b[i], c);
         }
 
@@ -206,8 +200,7 @@ namespace HCL
                 _mm_store_ps(&a[i], va);
             }
 
-#pragma omp parallel for
-            for (std::intmax_t i = (a.size() / batch_size) * batch_size; i < std::intmax_t(a.size()); ++i)
+            for (std::size_t i = (a.size() / batch_size) * batch_size; i < a.size(); ++i)
                 a[i] = fs(b, c[i]);
         }
 
@@ -224,8 +217,7 @@ namespace HCL
                 AVX_prtn(a, b, c, f, fs);
             return a;
         }
-        #endif
-
+        #else
         // do_scalar_create
         template <typename T>
         static vector_f32 do_scalar_create(const vector_f32& b, const T& c, float (*fs) (const float&, const float&))
@@ -235,38 +227,10 @@ namespace HCL
                 a.do_scalar(b, c, fs);
             return a;
         }
+        #endif
 
     public:
         using vector_vanilla<float>::vector_vanilla;
-
-        #ifdef __AVX2__
-        void operator+= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, add, add); }
-        void operator-= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, sub, sub); }
-        void operator*= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, mul, mul); }
-        void operator/= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, div, div); }
-        void operator+= (const float& x) { AVX2_prtn(*this, *this, x, add, add); }
-        void operator-= (const float& x) { AVX2_prtn(*this, *this, x, sub, sub); }
-        void operator*= (const float& x) { AVX2_prtn(*this, *this, x, mul, mul); }
-        void operator/= (const float& x) { AVX2_prtn(*this, *this, x, div, div); }
-        #elif defined(__AVX__)
-        void operator+= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, add, add); }
-        void operator-= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, sub, sub); }
-        void operator*= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, mul, mul); }
-        void operator/= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, div, div); }
-        void operator+= (const float& x) { AVX_prtn(*this, *this, x, add, add); }
-        void operator-= (const float& x) { AVX_prtn(*this, *this, x, sub, sub); }
-        void operator*= (const float& x) { AVX_prtn(*this, *this, x, mul, mul); }
-        void operator/= (const float& x) { AVX_prtn(*this, *this, x, div, div); }
-        #else
-        void operator+= (const vector_f32& vec) { do_scalar(*this, vec, add); }
-        void operator-= (const vector_f32& vec) { do_scalar(*this, vec, sub); }
-        void operator*= (const vector_f32& vec) { do_scalar(*this, vec, mul); }
-        void operator/= (const vector_f32& vec) { do_scalar(*this, vec, div); }
-        void operator+= (const float& x) { do_scalar(*this, x, add); }
-        void operator-= (const float& x) { do_scalar(*this, x, sub); }
-        void operator*= (const float& x) { do_scalar(*this, x, mul); }
-        void operator/= (const float& x) { do_scalar(*this, x, div); }
-        #endif
 
         #ifdef __AVX2__
         void sum(const vector_f32& a, const vector_f32& b) { AVX2_prtn(*this, a, b, add, add); }
@@ -279,6 +243,24 @@ namespace HCL
         void quo(const vector_f32& a, const float& b) { AVX2_prtn(*this, a, b, div, div); }
         void dif(const float& a, const vector_f32& b) { AVX2_prtn(*this, a, b, sub, sub); }
         void quo(const float& a, const vector_f32& b) { AVX2_prtn(*this, a, b, div, div); }
+        
+        void operator+= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, add, add); }
+        void operator-= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, sub, sub); }
+        void operator*= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, mul, mul); }
+        void operator/= (const vector_f32& vec) { AVX2_prtn(*this, *this, vec, div, div); }
+        void operator+= (const float& x) { AVX2_prtn(*this, *this, x, add, add); }
+        void operator-= (const float& x) { AVX2_prtn(*this, *this, x, sub, sub); }
+        void operator*= (const float& x) { AVX2_prtn(*this, *this, x, mul, mul); }
+        void operator/= (const float& x) { AVX2_prtn(*this, *this, x, div, div); }
+
+        vector_f32 operator+ (const vector_f32& vec) { return do_AVX2_create(*this, vec, add, add); }
+        vector_f32 operator- (const vector_f32& vec) { return do_AVX2_create(*this, vec, sub, sub); }
+        vector_f32 operator* (const vector_f32& vec) { return do_AVX2_create(*this, vec, mul, mul); }
+        vector_f32 operator/ (const vector_f32& vec) { return do_AVX2_create(*this, vec, div, div); }
+        vector_f32 operator+ (const float& x) { return do_AVX2_create(*this, x, add, add); }
+        vector_f32 operator- (const float& x) { return do_AVX2_create(*this, x, sub, sub); }
+        vector_f32 operator* (const float& x) { return do_AVX2_create(*this, x, mul, mul); }
+        vector_f32 operator/ (const float& x) { return do_AVX2_create(*this, x, div, div); }
         #elif defined(__AVX__)
         void sum(const vector_f32& a, const vector_f32& b) { AVX_prtn(*this, a, b, add, add); }
         void dif(const vector_f32& a, const vector_f32& b) { AVX_prtn(*this, a, b, sub, sub); }
@@ -290,6 +272,24 @@ namespace HCL
         void quo(const vector_f32& a, const float& b) { AVX_prtn(*this, a, b, div, div); }
         void dif(const float& a, const vector_f32& b) { AVX_prtn(*this, a, b, sub, sub); }
         void quo(const float& a, const vector_f32& b) { AVX_prtn(*this, a, b, div, div); }
+        
+        void operator+= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, add, add); }
+        void operator-= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, sub, sub); }
+        void operator*= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, mul, mul); }
+        void operator/= (const vector_f32& vec) { AVX_prtn(*this, *this, vec, div, div); }
+        void operator+= (const float& x) { AVX_prtn(*this, *this, x, add, add); }
+        void operator-= (const float& x) { AVX_prtn(*this, *this, x, sub, sub); }
+        void operator*= (const float& x) { AVX_prtn(*this, *this, x, mul, mul); }
+        void operator/= (const float& x) { AVX_prtn(*this, *this, x, div, div); }
+        
+        vector_f32 operator+ (const vector_f32& vec) { return do_AVX_create(*this, vec, add, add); }
+        vector_f32 operator- (const vector_f32& vec) { return do_AVX_create(*this, vec, sub, sub); }
+        vector_f32 operator* (const vector_f32& vec) { return do_AVX_create(*this, vec, mul, mul); }
+        vector_f32 operator/ (const vector_f32& vec) { return do_AVX_create(*this, vec, div, div); }
+        vector_f32 operator+ (const float& x) { return do_AVX_create(*this, x, add, add); }
+        vector_f32 operator- (const float& x) { return do_AVX_create(*this, x, sub, sub); }
+        vector_f32 operator* (const float& x) { return do_AVX_create(*this, x, mul, mul); }
+        vector_f32 operator/ (const float& x) { return do_AVX_create(*this, x, div, div); }
         #else
         void sum(const vector_f32& a, const vector_f32& b) { do_scalar(a, b, add); }
         void dif(const vector_f32& a, const vector_f32& b) { do_scalar(a, b, sub); }
@@ -301,27 +301,16 @@ namespace HCL
         void quo(const vector_f32& a, const float& x) { do_scalar(a, x, div); }
         void dif(const float& a, const vector_f32& b) { do_scalar(a, b, sub); }
         void quo(const float& a, const vector_f32& b) { do_scalar(a, b, div); }
-        #endif
-
-        #ifdef __AVX2__
-        vector_f32 operator+ (const vector_f32& vec) { return do_AVX2_create(*this, vec, add, add); }
-        vector_f32 operator- (const vector_f32& vec) { return do_AVX2_create(*this, vec, sub, sub); }
-        vector_f32 operator* (const vector_f32& vec) { return do_AVX2_create(*this, vec, mul, mul); }
-        vector_f32 operator/ (const vector_f32& vec) { return do_AVX2_create(*this, vec, div, div); }
-        vector_f32 operator+ (const float& x) { return do_AVX2_create(*this, x, add, add); }
-        vector_f32 operator- (const float& x) { return do_AVX2_create(*this, x, sub, sub); }
-        vector_f32 operator* (const float& x) { return do_AVX2_create(*this, x, mul, mul); }
-        vector_f32 operator/ (const float& x) { return do_AVX2_create(*this, x, div, div); }
-        #elif defined(__AVX__)
-        vector_f32 operator+ (const vector_f32& vec) { return do_AVX_create(*this, vec, add, add); }
-        vector_f32 operator- (const vector_f32& vec) { return do_AVX_create(*this, vec, sub, sub); }
-        vector_f32 operator* (const vector_f32& vec) { return do_AVX_create(*this, vec, mul, mul); }
-        vector_f32 operator/ (const vector_f32& vec) { return do_AVX_create(*this, vec, div, div); }
-        vector_f32 operator+ (const float& x) { return do_AVX_create(*this, x, add, add); }
-        vector_f32 operator- (const float& x) { return do_AVX_create(*this, x, sub, sub); }
-        vector_f32 operator* (const float& x) { return do_AVX_create(*this, x, mul, mul); }
-        vector_f32 operator/ (const float& x) { return do_AVX_create(*this, x, div, div); }
-        #else
+        
+        void operator+= (const vector_f32& vec) { do_scalar(*this, vec, add); }
+        void operator-= (const vector_f32& vec) { do_scalar(*this, vec, sub); }
+        void operator*= (const vector_f32& vec) { do_scalar(*this, vec, mul); }
+        void operator/= (const vector_f32& vec) { do_scalar(*this, vec, div); }
+        void operator+= (const float& x) { do_scalar(*this, x, add); }
+        void operator-= (const float& x) { do_scalar(*this, x, sub); }
+        void operator*= (const float& x) { do_scalar(*this, x, mul); }
+        void operator/= (const float& x) { do_scalar(*this, x, div); }
+        
         vector_f32 operator+ (const vector_f32& vec) { return do_scalar_create(*this, vec, add); }
         vector_f32 operator- (const vector_f32& vec) { return do_scalar_create(*this, vec, sub); }
         vector_f32 operator* (const vector_f32& vec) { return do_scalar_create(*this, vec, mul); }
