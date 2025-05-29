@@ -106,13 +106,13 @@ namespace HCL
             return a;
         }
         #elif defined(__AVX__)
-        static __m128 add(const __m128& a, const __m128& b) { return _mm_add_pd(a, b); }
-        static __m128 sub(const __m128& a, const __m128& b) { return _mm_sub_pd(a, b); }
-        static __m128 mul(const __m128& a, const __m128& b) { return _mm_mul_pd(a, b); }
-        static __m128 div(const __m128& a, const __m128& b) { return _mm_div_pd(a, b); }
+        static __m128d add(const __m128d& a, const __m128d& b) { return _mm_add_pd(a, b); }
+        static __m128d sub(const __m128d& a, const __m128d& b) { return _mm_sub_pd(a, b); }
+        static __m128d mul(const __m128d& a, const __m128d& b) { return _mm_mul_pd(a, b); }
+        static __m128d div(const __m128d& a, const __m128d& b) { return _mm_div_pd(a, b); }
 
         // AVX_prtn
-        void AVX_prtn(matrix_f64& a, const matrix_f64& b, const matrix_f64& c, __m128 (*f) (const __m128&, const __m128&), double (*fs) (const double&, const double&))
+        void AVX_prtn(matrix_f64& a, const matrix_f64& b, const matrix_f64& c, __m128d (*f) (const __m128d&, const __m128d&), double (*fs) (const double&, const double&))
         {
 #ifdef DEBUG
             if ((!b.size().is_duplicate(c.size())) || (!b.size().is_duplicate(a.size())))
@@ -124,9 +124,9 @@ namespace HCL
 #pragma omp parallel for
             for (std::intmax_t i = 0; i < simd_range; i += batch_size)
             {
-                __m128 vb = _mm_load_pd(&b[i]);
-                __m128 vc = _mm_load_pd(&c[i]);
-                __m128 va = f(vb, vc);
+                __m128d vb = _mm_load_pd(&b[i]);
+                __m128d vc = _mm_load_pd(&c[i]);
+                __m128d va = f(vb, vc);
                 _mm_store_pd(&a[i], va);
             }
 
@@ -134,7 +134,7 @@ namespace HCL
                 a[i] = fs(b[i], c[i]);
         }
 
-        void AVX_prtn(matrix_f64& a, const matrix_f64& b, const double& c, __m128 (*f) (const __m128&, const __m128&), double (*fs) (const double&, const double&))
+        void AVX_prtn(matrix_f64& a, const matrix_f64& b, const double& c, __m128d (*f) (const __m128d&, const __m128d&), double (*fs) (const double&, const double&))
         {
 #ifdef DEBUG
             if (!b.size().is_duplicate(a.size()))
@@ -146,9 +146,9 @@ namespace HCL
 #pragma omp parallel for
             for (std::intmax_t i = 0; i < simd_range; i += batch_size)
             {
-                __m128 vb = _mm_load_pd(&b[i]);
-                __m128 vc = _mm_set1_pd(c);
-                __m128 va = f(vb, vc);
+                __m128d vb = _mm_load_pd(&b[i]);
+                __m128d vc = _mm_set1_pd(c);
+                __m128d va = f(vb, vc);
                 _mm_store_pd(&a[i], va);
             }
 
@@ -156,7 +156,7 @@ namespace HCL
                 a[i] = fs(b[i], c);
         }
 
-        void AVX_prtn(matrix_f64& a, const double& b, const matrix_f64& c, __m128 (*f) (const __m128&, const __m128&), double (*fs) (const double&, const double&))
+        void AVX_prtn(matrix_f64& a, const double& b, const matrix_f64& c, __m128d (*f) (const __m128d&, const __m128d&), double (*fs) (const double&, const double&))
         {
 #ifdef DEBUG
             if (!c.size().is_duplicate(a.size()))
@@ -168,9 +168,9 @@ namespace HCL
 #pragma omp parallel for
             for (std::intmax_t i = 0; i < simd_range; i += batch_size)
             {
-                __m128 vb = _mm_set1_pd(b);
-                __m128 vc = _mm_load_pd(&c[i]);
-                __m128 va = f(vb, vc);
+                __m128d vb = _mm_set1_pd(b);
+                __m128d vc = _mm_load_pd(&c[i]);
+                __m128d va = f(vb, vc);
                 _mm_store_pd(&a[i], va);
             }
 
@@ -180,7 +180,7 @@ namespace HCL
 
         // do_AVX_create
         template <typename T>
-        matrix_f64 do_AVX_create(const matrix_f64& b, const T& c, __m128 (*f) (const __m128&, const __m128&), double (*fs) (const double&, const double&))
+        matrix_f64 do_AVX_create(const matrix_f64& b, const T& c, __m128d (*f) (const __m128d&, const __m128d&), double (*fs) (const double&, const double&))
         {
 #ifdef DEBUG
             if (b.size().is_duplicate(c.size()))
