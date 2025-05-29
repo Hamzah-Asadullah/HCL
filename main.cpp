@@ -48,6 +48,7 @@ int main(int argc, const char* argv[]) // expected: filename count_elements {if 
             {
                 omp_set_num_threads(my_stoi(argv[arg + 1]));
                 std::cout << ">> Set OpenMP thread count to " << argv[arg + 1] << ".\n";
+                std::cout << ">> OpenMP reports a max. of " << omp_get_max_threads() << " threads.\n";
             }
             else std::cout << ">> Warning: Flag '-ompt' (OpenMP Threads) announced but no value given.\n";
         }
@@ -61,8 +62,8 @@ int main(int argc, const char* argv[]) // expected: filename count_elements {if 
     std::cout << ">> SIMD Mode: Off (Scalar)\n";
     #endif
 
-    HCL::matrix_f32 a;
-    HCL::vector_f32 b;
+    HCL::matrix_f64 a;
+    HCL::vector_f64 b;
     std::size_t elems = 1;
 
     if (argc > 1)

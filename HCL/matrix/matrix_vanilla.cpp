@@ -66,7 +66,12 @@ namespace HCL
         // transpose
         void transpose()
         {
-
+            matrix_vanilla<T> temp(shape.cols, shape.rows);
+            for (std::size_t r = 0; r < shape.rows; ++r)
+                for (std::size_t c = 0; c < shape.cols; ++c)
+                    temp(c, r) = (*this)(r, c);
+            *this = temp;
+            temp._free();
         }
 
         // size data setX applyFn
