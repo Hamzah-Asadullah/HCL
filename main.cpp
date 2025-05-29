@@ -62,8 +62,8 @@ int main(int argc, const char* argv[]) // expected: filename count_elements {if 
     std::cout << ">> SIMD Mode: Off (Scalar)\n";
     #endif
 
-    HCL::matrix_f64 a;
-    HCL::vector_f64 b;
+    HCL::matrix_i8 a;
+    HCL::vector_i8 b;
     std::size_t elems = 1;
 
     if (argc > 1)
