@@ -1,3 +1,6 @@
+> HCL is not mathematically defined; most operator overloads on native types are element-wise.
+> Matrices are defined under `./HCL/matrix.cpp` (binds subfolder `./HCL/matrix/`) but currently not compatible with vectors.
+
 # HCL - Hamzah's Computing Library
 
 ![License](https://img.shields.io/badge/License-MIT-blue) 
